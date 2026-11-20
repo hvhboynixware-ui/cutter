@@ -4,7 +4,8 @@
 Модуль делает одну вещь: расшифровка -> запрос к LLM -> провалидированный list[Moment].
 Ничего не рендерит и файлов не трогает.
 
-Провайдеры: deepseek (основной), openrouter, gemini, groq, ollama (локальный).
+Провайдеры: deepseek (основной), openrouter, gemini, groq, ollama (локальный)
+и custom — любой свой OpenAI-совместимый сервер (/v1: LM Studio, vLLM, шлюзы).
 OpenAI-совместимые идут через /chat/completions, Gemini — через свой REST.
 При падении основного провайдера и включённом fallback идём по цепочке FALLBACK_ORDER.
 """
@@ -22,6 +23,7 @@ import requests
 # Контракт: запрос к LLM живёт до 180 с — длинная расшифровка не должна обрываться раньше.
 TIMEOUT = 180.0
 # Порядок фолбэка: основной провайдер пробуем первым, дальше строго этот список.
+# custom сюда не входит: молча стучаться на чужой/локальный сервер как фолбэк — сюрприз.
 FALLBACK_ORDER = ("deepseek", "openrouter", "gemini", "groq", "ollama")
 
 # Бюджет расшифровки: длинные видео ужимаем равномерно, чтобы не упереться в лимит токенов.
@@ -34,7 +36,7 @@ OVERLAP_EPS = 0.05
 
 @dataclass
 class LLMConfig:
-    provider: str = "deepseek"          # deepseek | openrouter | gemini | groq | ollama
+    provider: str = "deepseek"          # deepseek | openrouter | gemini | groq | ollama | custom
     model: str = "deepseek-flash"
     api_key: str = ""
     base_url: str = ""                  # переопределение, иначе дефолт провайдера
@@ -128,8 +130,27 @@ PROVIDERS: tuple[dict, ...] = (
             {"id": "qwen2.5", "label": "Qwen 2.5 (локально)", "free": True},
         ),
     },
+    {
+        "id": "custom",
+        "label": "Свой сервер (OpenAI /v1)",
+        "kind": "openai",
+        # LM Studio по умолчанию: при пустом base_url в настройках бьём сюда.
+        "base_url": "http://127.0.0.1:1234/v1",
+        "needs_key": False,             # vLLM/LM Studio часто работают без ключа
+        "key_url": "",
+        "note": "Любой OpenAI-совместимый: LM Studio, Ollama, vLLM, OpenRouter-совместимые шлюзы. Укажи base_url и модель",
+        "models": (),                   # пусто: имя модели пользователь вводит руками
+        # Модель по умолчанию: без неё resolve/pick_moments не сможет выбрать spec["models"][0].
+        "default_model": "local-model",
+    },
 )
 _BY_ID = {item["id"]: item for item in PROVIDERS}
+
+
+def _default_model(spec: dict) -> str:
+    """Модель по умолчанию: у custom моделей нет, ему задаём явно default_model."""
+    return spec.get("default_model") or spec["models"][0]["id"]
+
 
 _SYSTEM = "Ты — редактор коротких видео. Отвечай только JSON, без пояснений и markdown."
 
@@ -171,7 +192,7 @@ def resolve(provider: str, model: str = "") -> tuple[str, str, str]:
         raise LLMError(
             f"Неизвестный провайдер «{provider}». Доступные: {', '.join(_BY_ID)}"
         )
-    chosen = (model or "").strip() or spec["models"][0]["id"]
+    chosen = (model or "").strip() or _default_model(spec)
     return provider_id, chosen, spec["base_url"]
 
 
@@ -203,7 +224,10 @@ def ping(cfg: LLMConfig, timeout: float = 20.0) -> tuple[bool, str]:
         return False, str(exc)
     except Exception as exc:  # ping не должен ронять HTTP-ручку
         return False, f"{spec['label']}: непредвиденная ошибка — {str(exc)[:200]}"
-    return True, f"{spec['label']} / {model}: связь есть, ключ работает."
+    if api_key:
+        return True, f"{spec['label']} / {model}: связь есть, ключ работает."
+    # custom/ollama без ключа — это норма, не пугаем словом «ключ»
+    return True, f"{spec['label']} / {model}: связь есть, ключ не нужен."
 
 
 def pick_moments(
@@ -311,7 +335,7 @@ def _candidate_chain(cfg: LLMConfig) -> list[dict]:
             "provider": provider_id,
             "label": spec["label"],
             "kind": spec["kind"],
-            "model": model or spec["models"][0]["id"],
+            "model": model or _default_model(spec),
             # base_url из настроек имеет смысл только для основного провайдера
             "base_url": ((cfg.base_url or "").strip() if is_primary else "") or spec["base_url"],
             "api_key": _key_for(cfg, provider_id),
@@ -367,6 +391,9 @@ def _call_openai(candidate: dict, prompt: str, cfg: LLMConfig,
             payload.pop("response_format", None)
             response = _post(label, url, headers=headers, payload=payload,
                              params=None, timeout=timeout)
+    if response.status_code == 404 and candidate.get("provider") == "custom":
+        # Свой сервер чаще всего живёт на /v1: 404 — это почти всегда забытый суффикс.
+        raise LLMError(_custom_404_hint(label, candidate.get("base_url", ""), response))
     _ensure_ok(label, response)
     data = _json_body(label, response)
     choices = data.get("choices") or []
@@ -429,6 +456,18 @@ def _endpoint_gemini(base_url: str, model: str) -> str:
     if ":generateContent" in base:
         return base
     return f"{base}/models/{model}:generateContent"
+
+
+def _custom_404_hint(label: str, base_url: str, response: requests.Response) -> str:
+    """Свой сервер: 404 на /chat/completions — почти всегда base_url без /v1."""
+    message = (
+        f"{label}: сервер ответил 404 — проверь, что base_url оканчивается на /v1 "
+        f"(сейчас {base_url or 'пусто'})"
+    )
+    body = _body_text(response)
+    if body:
+        message += f". Ответ: {body[:300]}"
+    return message
 
 
 def _ensure_ok(label: str, response: requests.Response) -> None:

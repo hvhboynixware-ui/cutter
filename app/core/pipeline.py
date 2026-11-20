@@ -474,9 +474,16 @@ def analyze(
     workdir: Path,
     settings: dict,
     on_log: Callable[[str], None] | None = None,
+    progress_offset: float = 0.0,
 ) -> dict:
     """Полный цикл для одного исходника. Возвращает результат для job.result."""
     log = on_log or job.log
+    floor = max(0.0, min(95.0, float(progress_offset)))
+
+    def prog(percent: float, stage: str = "", message: str = "") -> None:
+        """Прогресс с учётом уже потраченного времени на скачивание."""
+        job.set_progress(floor + (100.0 - floor) * percent / 100.0, stage, message)
+
     log(f"источник: {source.name}")
 
     info = probe(source)
@@ -496,7 +503,7 @@ def analyze(
     work = workdir / ".work"
     work.mkdir(exist_ok=True)
 
-    job.set_progress(3, "звук", "вытаскиваю аудиодорожку")
+    prog(3, "звук", "вытаскиваю аудиодорожку")
     wav = work / "audio.wav"
     extract_audio(source, wav)
 
@@ -507,11 +514,11 @@ def analyze(
             "Скачай её в Настройках (кнопка «Скачать модель»)"
         )
 
-    job.set_progress(8, "распознавание", "слушаю исходник")
+    prog(8, "распознавание", "слушаю исходник")
     started = time.time()
 
     def stt_progress(pct: float) -> None:
-        job.set_progress(8 + pct * 0.42, "распознавание", f"расшифровка {pct:.0f}%")
+        prog(8 + pct * 0.42, "распознавание", f"расшифровка {pct:.0f}%")
 
     segments, words = transcribe(
         wav, model_path, settings["stt"]["language"], duration,
@@ -521,7 +528,7 @@ def analyze(
     if job.cancelled():
         raise PipelineError("отменено")
 
-    job.set_progress(52, "выбор моментов", "LLM ищет, что залетит")
+    prog(52, "выбор моментов", "LLM ищет, что залетит")
     render_cfg = settings["render"]
 
     if S.env_flag("CUTTER_FAKE_LLM"):
@@ -585,7 +592,7 @@ def analyze(
         if job.cancelled():
             raise PipelineError("отменено")
         share = 56.0 / max(1, len(moments))
-        job.set_progress(54 + share * (index - 1), "рендер", f"клип {index} из {len(moments)}")
+        prog(54 + share * (index - 1), "рендер", f"клип {index} из {len(moments)}")
 
         ass_path = work / f"clip_{index:02d}.ass"
         cues = build_cues(words, moment.start, moment.end)

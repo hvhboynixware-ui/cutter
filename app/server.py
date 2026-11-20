@@ -20,7 +20,7 @@ from .core import settings as S
 from .core import models as M
 from .core import pipeline
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 WEB_DIR = Path(__file__).resolve().parent / "web"
 KINDS = {"clips", "previews"}
 
@@ -71,7 +71,7 @@ def health() -> dict:
         edge = False
         browser_error = str(exc)[:200]
 
-    installed = S.installed_models()
+    installed = M.installed_models()
     return {
         "ok": True,
         "version": VERSION,
@@ -121,7 +121,12 @@ def provider_test(body: dict = Body(...)) -> dict:
     settings = S.load()
     provider = body.get("provider") or settings["llm"]["provider"]
     api_key = body.get("api_key") or S.resolve_key(settings, provider)
-    cfg = llm.LLMConfig(provider=provider, model=body.get("model") or settings["llm"]["model"], api_key=api_key)
+    cfg = llm.LLMConfig(
+        provider=provider,
+        model=body.get("model") or settings["llm"]["model"],
+        api_key=api_key,
+        base_url=body.get("base_url") or settings["llm"].get("base_url", ""),
+    )
     try:
         ok, message = llm.ping(cfg)
     except Exception as exc:
@@ -132,8 +137,17 @@ def provider_test(body: dict = Body(...)) -> dict:
 # ---------------------------------------------------------------- модели whisper
 
 @app.get("/api/models")
-def models() -> dict:
-    return {"installed": S.installed_models(), "sizes": M.SIZES}
+def models_list() -> dict:
+    return {"installed": M.installed_models(), "sizes": M.SIZES}
+
+
+@app.post("/api/models/delete")
+def models_delete(body: dict = Body(...)) -> dict:
+    size = str(body.get("size") or "")
+    removed = M.delete_model(size)
+    if removed:
+        S.update({"stt": {"whisper_size": "base"}})
+    return {"ok": removed, "size": size}
 
 
 @app.post("/api/models/download")
@@ -158,8 +172,10 @@ def models_download(body: dict = Body(...)) -> dict:
 
 # ---------------------------------------------------------------- нарезка
 
-def _analyze_runner(job: jobs.Job, source: Path, job_dir: Path, settings: dict) -> None:
-    result = pipeline.analyze(job=job, source=source, workdir=job_dir, settings=settings)
+def _analyze_runner(job: jobs.Job, source: Path, job_dir: Path, settings: dict,
+                    progress_offset: float = 0.0) -> None:
+    result = pipeline.analyze(job=job, source=source, workdir=job_dir, settings=settings,
+                              progress_offset=progress_offset)
     job.result = {
         "clips": _clip_payload(job.id, result["clips"]),
         "count": len(result["clips"]),
@@ -255,7 +271,8 @@ def youtube(body: dict = Body(...)) -> dict:
         source = YT.download(url, job_dir, max_height=max_height,
                              on_progress=on_progress, cancel=job.cancelled)
         job.log(f"скачано: {Path(str(source.path)).name}")
-        _analyze_runner(job, Path(str(source.path)), job_dir, settings)
+        # скачивание занимает первые 18% общей шкалы, дальше нарезка
+        _analyze_runner(job, Path(str(source.path)), job_dir, settings, progress_offset=18.0)
 
     job = jobs.MANAGER.submit("youtube", run, job_id=job_id, meta={"job_dir": str(job_dir), "url": url})
     return {"job_id": job.id}

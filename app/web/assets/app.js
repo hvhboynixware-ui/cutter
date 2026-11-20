@@ -70,8 +70,12 @@ const el = {
   uploadResultList: $('#upload-result-list'),
   history: $('#history'),
   historyRefresh: $('#history-refresh'),
+  outdirLink: $('#outdir-link'),
   llmProvider: $('#llm-provider'),
   llmModel: $('#llm-model'),
+  llmModelCustom: $('#llm-model-custom'),
+  llmBaseRow: $('#llm-base-row'),
+  llmBaseUrl: $('#llm-base-url'),
   llmKey: $('#llm-key'),
   llmHint: $('#llm-hint'),
   llmFallback: $('#llm-fallback'),
@@ -488,6 +492,43 @@ function updateRunHint() {
 }
 
 el.ytUrl.addEventListener('input', updateRunHint);
+
+el.ytBtn.addEventListener('click', () => {
+  const url = el.ytUrl.value.trim();
+  if (!url) {
+    toast('Вставь ссылку: YouTube, Rutube или VK видео', 'err');
+    el.ytUrl.focus();
+    return;
+  }
+  if (el.runBtn.disabled) el.runBtn.disabled = false;
+  el.runBtn.click();
+});
+
+el.ytUrl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    el.ytBtn.click();
+  }
+});
+
+/* ---------------------------------------------------------------- папка результатов */
+
+function updateOutdir() {
+  const custom = (state.settings?.paths?.outdir || '').trim();
+  el.outdirLink.textContent = custom || 'папка приложения (по умолчанию)';
+  el.outdirLink.title = custom || 'Нажми, чтобы выбрать папку';
+}
+
+el.outdirLink.addEventListener('click', () => {
+  go('settings');
+  setTimeout(() => {
+    const input = $('#outdir');
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, 80);
+});
 
 /* ---------------------------------------------------------------- источник */
 
@@ -927,13 +968,29 @@ function renderProviderSelect(selectedId) {
 
 function renderModelSelect(selectedModel) {
   const provider = providerById(el.llmProvider.value);
+  const isCustom = Boolean(provider && provider.id === 'custom');
   const models = provider ? provider.models : [];
+
+  el.llmModel.hidden = isCustom;
+  el.llmModelCustom.hidden = !isCustom;
+  el.llmBaseRow.hidden = !isCustom;
+
   el.llmModel.innerHTML = models
     .map((model) => {
       const free = model.free ? ' · бесплатно' : '';
       return `<option value="${esc(model.id)}">${esc(model.label || model.id)}${esc(free)}</option>`;
     })
     .join('');
+
+  const saved = state.settings?.llm || {};
+  if (isCustom) {
+    const prevCustom = saved.provider === 'custom';
+    el.llmModelCustom.value = (prevCustom && saved.model) || selectedModel || 'local-model';
+    el.llmBaseUrl.value = (prevCustom && saved.base_url) || 'http://127.0.0.1:1234/v1';
+    el.llmHint.textContent = 'Свой сервер: модель пиши вручную, ключ не обязателен. Сервер должен отвечать на /chat/completions.';
+    return;
+  }
+
   const wanted = selectedModel && models.some((model) => model.id === selectedModel)
     ? selectedModel
     : (models[0]?.id || '');
@@ -943,6 +1000,17 @@ function renderModelSelect(selectedModel) {
     ? `Ключ: ${provider.key_url}. Хранится локально в app/data/settings.json`
     : 'Ключ хранится локально в app/data/settings.json';
   if (current && current.note) el.llmHint.textContent += ` · ${current.note}`;
+}
+
+function currentProviderIsCustom() {
+  const provider = providerById(el.llmProvider.value);
+  return Boolean(provider && provider.id === 'custom');
+}
+
+function currentModelId() {
+  return currentProviderIsCustom()
+    ? (el.llmModelCustom.value.trim() || 'local-model')
+    : el.llmModel.value;
 }
 
 el.llmProvider.addEventListener('change', () => {
@@ -963,8 +1031,9 @@ el.testKey.addEventListener('click', async () => {
     const key = state.keyDirty ? el.llmKey.value.trim() : '';
     const data = await apiJson('/api/providers/test', {
       provider: el.llmProvider.value,
-      model: el.llmModel.value,
+      model: currentModelId(),
       api_key: key,
+      base_url: currentProviderIsCustom() ? el.llmBaseUrl.value.trim() : '',
     });
     toast(data.message || (data.ok ? 'работает' : 'не работает'), data.ok ? 'ok' : 'err');
     setStatus(data.ok ? 'ok' : 'err', data.ok ? 'ключ рабочий' : 'ключ не работает');
@@ -978,23 +1047,33 @@ el.testKey.addEventListener('click', async () => {
 async function refreshModels() {
   try {
     const data = await api('/api/models');
-    const installed = new Set((data.installed || []).map((item) => item.size));
+    const installed = new Map((data.installed || []).map((item) => [item.size, item]));
     if (state.health) {
-      state.health.models = data.installed || [];
+      state.health.models = (data.installed || []).filter((item) => item.complete);
     }
     renderSetup();
+
+    const human = (bytes) => {
+      const mb = Number(bytes || 0) / (1024 * 1024);
+      return mb >= 1024 ? `${(mb / 1024).toFixed(2)} ГБ` : `${mb.toFixed(0)} МБ`;
+    };
+
     el.models.innerHTML = (data.sizes || []).map((size) => {
-      const isInstalled = installed.has(size.id);
+      const item = installed.get(size.id);
+      let stateHtml = `<button class="btn btn--soft btn--tiny" data-model="${esc(size.id)}">Скачать</button>`;
+      if (item && item.complete) {
+        stateHtml = `<span class="tag tag--ok">на диске · ${human(item.bytes)}</span>
+          <button class="btn btn--ghost btn--tiny" data-delete-model="${esc(size.id)}" title="Удалить модель">Удалить</button>`;
+      } else if (item) {
+        stateHtml = `<span class="tag">недокачана · ${human(item.bytes)}</span>
+          <button class="btn btn--soft btn--tiny" data-model="${esc(size.id)}">Докачать</button>`;
+      }
       return `<div class="model-row">
         <div>
           <div class="model-row__name">${esc(size.label)}</div>
-          <div class="model-row__note">${esc(size.mb)} МБ · ${esc(size.note)}</div>
+          <div class="model-row__note">${human(size.bytes)} · ${esc(size.note)}</div>
         </div>
-        <div class="model-row__state">
-          ${isInstalled
-            ? '<span class="tag tag--ok">на диске</span>'
-            : `<button class="btn btn--soft btn--tiny" data-model="${esc(size.id)}">Скачать</button>`}
-        </div>
+        <div class="model-row__state">${stateHtml}</div>
       </div>`;
     }).join('');
   } catch (error) {
@@ -1003,6 +1082,25 @@ async function refreshModels() {
 }
 
 el.models.addEventListener('click', async (event) => {
+  const removeButton = event.target.closest('[data-delete-model]');
+  if (removeButton) {
+    const size = removeButton.dataset.deleteModel;
+    if (!confirm(`Удалить модель ${size}? Придётся качать заново.`)) return;
+    removeButton.disabled = true;
+    try {
+      const data = await apiJson('/api/models/delete', { size });
+      if (data.ok) {
+        toast(`Модель ${size} удалена`);
+        await refreshModels();
+      } else {
+        toast('не нашёл модель на диске', 'err');
+      }
+    } catch (error) {
+      toast(error.message, 'err');
+    }
+    return;
+  }
+
   const button = event.target.closest('[data-model]');
   if (!button) return;
   button.disabled = true;
@@ -1023,18 +1121,23 @@ el.models.addEventListener('click', async (event) => {
 el.saveSettings.addEventListener('click', async () => {
   el.saveSettings.disabled = true;
   try {
+    const isCustom = currentProviderIsCustom();
+    const llmPatch = {
+      provider: el.llmProvider.value,
+      model: currentModelId(),
+      fallback: el.llmFallback.checked,
+    };
+    if (isCustom) {
+      llmPatch.base_url = el.llmBaseUrl.value.trim();
+    }
+    if (state.keyDirty && el.llmKey.value.trim()) {
+      llmPatch.api_key = el.llmKey.value.trim();
+    }
     const patch = {
-      llm: {
-        provider: el.llmProvider.value,
-        model: el.llmModel.value,
-        fallback: el.llmFallback.checked,
-      },
+      llm: llmPatch,
       stt: { language: el.language.value },
       paths: { outdir: el.outdir.value.trim() },
     };
-    if (state.keyDirty && el.llmKey.value.trim()) {
-      patch.llm.api_key = el.llmKey.value.trim();
-    }
     state.settings = await api('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1045,6 +1148,7 @@ el.saveSettings.addEventListener('click', async () => {
     toast('Сохранил', 'ok');
     renderChips(null);
     updateRunHint();
+    updateOutdir();
   } catch (error) {
     toast(error.message, 'err');
   } finally {
@@ -1120,6 +1224,7 @@ async function boot() {
   }
   renderLooks();
   updateRunHint();
+  updateOutdir();
 
   await refreshModels();
   updateRunHint();

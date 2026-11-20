@@ -105,8 +105,9 @@
 
               <div class="url-row">
                 <svg class="ico url-row__ico"><use href="#i-link"/></svg>
-                <input class="input" id="yt-url" type="url" placeholder="https://youtube.com/watch?v=…" spellcheck="false">
-                <button class="btn btn--soft" id="yt-btn">Тянуть с YouTube</button>
+                <input class="input" id="yt-url" type="text" inputmode="url" spellcheck="false"
+                       placeholder="YouTube · Rutube · VK видео — вставь ссылку">
+                <button class="btn btn--soft" id="yt-btn">Скачать и нарезать</button>
               </div>
             </div>
 
@@ -184,6 +185,11 @@
                 <svg class="ico"><use href="#i-bolt"/></svg><span>Нарезать</span>
               </button>
               <p class="card__foot" id="run-hint">Выбери файл или вставь ссылку</p>
+
+              <div class="outdir">
+                <span class="outdir__label">Клипы сохраняются в</span>
+                <button class="outdir__path" id="outdir-link" title="Изменить папку в настройках">—</button>
+              </div>
             </div>
           </div>
 
@@ -375,6 +381,13 @@
             <div class="field">
               <label class="field__label" for="llm-model">Модель</label>
               <select class="input" id="llm-model"></select>
+              <input class="input" id="llm-model-custom" placeholder="например qwen2.5-14b-instruct" hidden>
+            </div>
+
+            <div class="field" id="llm-base-row" hidden>
+              <label class="field__label" for="llm-base-url">Адрес сервера (/v1)</label>
+              <input class="input" id="llm-base-url" placeholder="http://127.0.0.1:1234/v1" spellcheck="false">
+              <p class="hint">Любой OpenAI-совместимый: LM Studio, vLLM, Ollama, шлюзы. Ключ можно не заполнять.</p>
             </div>
 
             <div class="field">

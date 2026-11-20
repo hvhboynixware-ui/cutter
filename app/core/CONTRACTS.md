@@ -8,11 +8,13 @@
 ```python
 @dataclass
 class LLMConfig:
-    provider: str = "deepseek"          # deepseek | openrouter | gemini | groq | ollama
+    provider: str = "deepseek"          # deepseek | openrouter | gemini | groq | ollama | custom
     model: str = "deepseek-flash"
     api_key: str = ""
-    base_url: str = ""                  # переопределение, иначе дефолт провайдера
+    base_url: str = ""                  # для custom — адрес OpenAI-совместимого /v1 (по умолчанию LM Studio)
     temperature: float = 1.1
+    fallback: bool = True               # при падении основного идти по цепочке
+    keys: dict = field(default_factory=dict)  # ключи по провайдерам
 
 @dataclass
 class Moment:
@@ -59,7 +61,7 @@ def pick_moments(
 - Таймаут 180 с, HTTP-ошибки → `LLMError` с кодом и первыми 300 символами тела.
 - Никаких секретов в логи.
 
-## app/core/youtube.py — скачивание с YouTube
+## app/core/youtube.py — скачивание источника (YouTube, Rutube, VK)
 
 ```python
 @dataclass
@@ -90,6 +92,18 @@ def download(
 - Выбор формата: лучший mp4 ≤ max_height с аудио; если нет — лучший доступный.
 - Имя файла: `<source_id>_<slug>.mp4` в outdir.
 - Ошибки yt-dlp → `RuntimeError` с понятным текстом (возраст, приватное, гео-блок).
+
+## app/core/models.py — модели whisper
+
+```python
+SIZES: list[dict]                       # [{id, label, bytes, note}] — точные размеры файлов
+def size_info(size: str) -> dict | None
+def expected_bytes(size: str) -> int
+def is_installed(size: str) -> bool     # полный размер ±2% (недокачанная = False)
+def installed_models() -> list[dict]    # [{size, path, bytes, expected, complete}]
+def delete_model(size: str) -> bool
+def download_model(size, *, dest=None, log=print, progress=None, cancel=None) -> Path
+```
 
 ## app/core/upload/base.py — контракт загрузки
 

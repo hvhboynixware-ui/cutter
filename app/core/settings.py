@@ -67,6 +67,7 @@ DEFAULTS: dict[str, Any] = {
         "provider": "deepseek",
         "model": "deepseek-flash",
         "api_key": "",
+        "base_url": "",
         "fallback": True,
         "keys": {"openrouter": "", "gemini": "", "groq": ""},
     },

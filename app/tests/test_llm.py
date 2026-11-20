@@ -103,9 +103,15 @@ def run_pick(monkeypatch, handler, *, cfg=None, n=3, min_dur=10.0, max_dur=60.0,
 
 def test_available_providers_shape():
     providers = llm.available_providers()
-    assert [item["id"] for item in providers] == ["deepseek", "openrouter", "gemini", "groq", "ollama"]
+    assert [item["id"] for item in providers] == [
+        "deepseek", "openrouter", "gemini", "groq", "ollama", "custom",
+    ]
     for item in providers:
         assert set(item) == {"id", "label", "models", "needs_key", "key_url", "note"}
+        if item["id"] == "custom":
+            # модель вводится руками, списка моделей у своего сервера нет
+            assert item["models"] == []
+            continue
         assert item["models"], item["id"]
         for model in item["models"]:
             assert set(model) == {"id", "label", "free"}
@@ -116,6 +122,20 @@ def test_available_providers_shape():
     assert by_id["openrouter"]["models"][0]["free"] is True
 
 
+def test_available_providers_includes_custom():
+    """custom — это про свой /v1-сервер: без ключа, без списка моделей."""
+    providers = {item["id"]: item for item in llm.available_providers()}
+    custom = providers["custom"]
+    assert custom["label"] == "Свой сервер (OpenAI /v1)"
+    assert custom["models"] == []
+    assert custom["needs_key"] is False
+    assert custom["key_url"] == ""
+    assert "LM Studio" in custom["note"]
+    assert "vLLM" in custom["note"]
+    # на фолбэк молча не стучимся
+    assert "custom" not in llm.FALLBACK_ORDER
+
+
 def test_resolve_base_urls():
     expected = {
         "deepseek": "https://api.deepseek.com",
@@ -123,6 +143,7 @@ def test_resolve_base_urls():
         "gemini": "https://generativelanguage.googleapis.com/v1beta",
         "groq": "https://api.groq.com/openai/v1",
         "ollama": "http://127.0.0.1:11434/v1",
+        "custom": "http://127.0.0.1:1234/v1",
     }
     for provider, base_url in expected.items():
         provider_id, model, resolved = llm.resolve(provider)
@@ -134,6 +155,12 @@ def test_resolve_base_urls():
     assert llm.resolve("gemini")[1] == "gemini-2.0-flash"
     assert llm.resolve("groq")[1] == "llama-3.3-70b-versatile"
     assert llm.resolve("ollama")[1] == "llama3.1"
+    # у custom моделей нет — дефолт local-model, а переданная модель важнее
+    assert llm.resolve("custom")[1] == "local-model"
+    assert llm.resolve(" CUSTOM ") == ("custom", "local-model", "http://127.0.0.1:1234/v1")
+    assert llm.resolve("custom", "qwen2.5-coder-7b") == (
+        "custom", "qwen2.5-coder-7b", "http://127.0.0.1:1234/v1",
+    )
     assert llm.resolve("groq", "my-custom-model") == ("groq", "my-custom-model", expected["groq"])
     with pytest.raises(llm.LLMError):
         llm.resolve("unknown")
@@ -408,3 +435,76 @@ def test_zero_clips_returns_early_without_network(monkeypatch):
                                cfg=make_cfg(), log=lambda _: None)
     assert moments == []
     assert calls == []
+
+
+# ---------------------------------------------------------------- свой сервер (custom)
+
+def test_custom_pick_moments_uses_config_base_url(monkeypatch):
+    """custom ходит строго на cfg.base_url + /chat/completions, без ключа и без Authorization."""
+    content = clips_json([clip(5.0, 25.0, score=81)])
+    cfg = make_cfg(
+        provider="custom", model="my-local-model", api_key="",
+        base_url="http://192.168.1.50:8000/v1",
+    )
+    moments, calls, _ = run_pick(monkeypatch, lambda url, kw: openai_reply(content), cfg=cfg)
+    assert len(moments) == 1
+    call = calls[0]
+    assert call["url"] == "http://192.168.1.50:8000/v1/chat/completions"
+    assert call["json"]["model"] == "my-local-model"
+    assert "Authorization" not in call["headers"]
+
+
+def test_custom_defaults_to_lm_studio_without_model(monkeypatch):
+    """Пустые base_url/model в настройках: LM Studio по умолчанию и модель local-model."""
+    content = clips_json([clip(5.0, 25.0)])
+    cfg = make_cfg(provider="custom", model="", api_key="", base_url="")
+    moments, calls, _ = run_pick(monkeypatch, lambda url, kw: openai_reply(content), cfg=cfg)
+    assert len(moments) == 1
+    assert calls[0]["url"] == "http://127.0.0.1:1234/v1/chat/completions"
+    assert calls[0]["json"]["model"] == "local-model"
+    assert "Authorization" not in calls[0]["headers"]
+
+
+def test_custom_base_url_without_v1_used_as_is(monkeypatch):
+    """base_url без /v1 не ломаем: шлём как есть (вдруг у пользователя прокси-шлюз)."""
+    calls = patch_post(monkeypatch, lambda url, kw: openai_reply(clips_json([clip(5.0, 25.0)])))
+    cfg = make_cfg(provider="custom", model="m", api_key="", base_url="http://127.0.0.1:1234")
+    llm.pick_moments(SEGMENTS, n=1, min_dur=10, max_dur=60, duration=120,
+                     cfg=cfg, log=lambda _: None)
+    assert calls[0]["url"] == "http://127.0.0.1:1234/chat/completions"
+
+
+def test_custom_ping_without_key_ok(monkeypatch):
+    calls = patch_post(monkeypatch, lambda url, kw: openai_reply("pong"))
+    cfg = make_cfg(provider="custom", model="local-model", api_key="", base_url="")
+    ok, message = llm.ping(cfg)
+    assert ok is True
+    assert "Свой сервер" in message
+    assert calls[0]["url"] == "http://127.0.0.1:1234/v1/chat/completions"
+    assert "Authorization" not in calls[0]["headers"]
+
+
+def test_custom_ping_404_hints_about_v1(monkeypatch):
+    """404 на своём сервере — почти всегда забытый /v1 в конце base_url."""
+    calls = patch_post(
+        monkeypatch, lambda url, kw: FakeResponse(404, text='{"error":"Not Found"}'),
+    )
+    cfg = make_cfg(provider="custom", model="local-model", api_key="",
+                   base_url="http://127.0.0.1:1234")
+    ok, message = llm.ping(cfg)
+    assert ok is False
+    assert "404" in message
+    assert "/v1" in message
+    assert "base_url" in message
+    assert calls[0]["url"] == "http://127.0.0.1:1234/chat/completions"
+
+
+def test_custom_pick_moments_404_surfaces_v1_hint(monkeypatch):
+    """pick_moments не глотает подсказку: текст про /v1 доходит до пользователя."""
+    cfg = make_cfg(provider="custom", model="local-model", api_key="",
+                   base_url="http://127.0.0.1:1234", fallback=False)
+    patch_post(monkeypatch, lambda url, kw: FakeResponse(404, text='{"error":"Not Found"}'))
+    with pytest.raises(llm.LLMError) as error:
+        llm.pick_moments(SEGMENTS, n=3, min_dur=10, max_dur=60, duration=120,
+                         cfg=cfg, log=lambda _: None)
+    assert "/v1" in str(error.value)
