@@ -50,7 +50,17 @@ run.bat
 ```
 
 `run.bat` сам создаст `.venv`, поставит зависимости и откроет окно.
-Если окно не поднялось — откроется браузер, это не ошибка.
+
+Режимы окна, если что-то не поднимается:
+
+```powershell
+.\.venv\Scripts\python -m app.main --window-mode app     # окно Edge/Chrome без адресной строки
+.\.venv\Scripts\python -m app.main --window-mode browser # обычная вкладка
+.\.venv\Scripts\python -m app.main --window-mode none    # только сервер, для отладки UI
+```
+
+По умолчанию `auto`: пробует нативное окно (pywebview), если .NET-окружение не даёт —
+открывает окно Edge/Chrome в режиме приложения. Второй путь работает всегда: Edge есть в Windows.
 
 Можно и вручную:
 
