@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pip-cache/
+.tmp/
+
+# Данные приложения
+app/data/
+models/
+.test-assets/
+*.log
+
+# Сборка/ОС
+build/
+dist/
+*.spec
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Иде
+.idea/
+.vscode/
+*.swp

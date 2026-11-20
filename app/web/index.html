@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutter — нарезка в шортсы</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0e'/%3E%3Cpath d='M11 8h4v16h-4zM19 8h3v16h-3z' fill='%23f5a524'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/fonts.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+
+<svg class="icon-sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-cut" viewBox="0 0 24 24"><path d="M4 4v16M9 4v16M14 4v16M19 4v16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 3.5v2M12 18.5v2M20.5 12h-2M5.5 12h-2M17.9 6.1l-1.4 1.4M7.5 16.5l-1.4 1.4M17.9 17.9l-1.4-1.4M7.5 7.5L6.1 6.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h5l-1 7 8-11h-5l1-7z" fill="currentColor"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7L11 6.3M14 11a4 4 0 0 0-5.7 0L6 13.3a4 4 0 0 0 5.7 5.7l1.3-1.3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="app">
+
+  <aside class="rail" aria-label="Разделы">
+    <div class="rail__logo" aria-hidden="true">
+      <span class="rail__mark"></span>
+      <span class="rail__word">cut</span>
+    </div>
+
+    <nav class="rail__nav">
+      <button class="rail__btn is-active" data-nav="cut" aria-current="page" title="Нарезка">
+        <svg class="ico"><use href="#i-cut"/></svg><span>Нарезка</span>
+      </button>
+      <button class="rail__btn" data-nav="upload" title="Загрузка">
+        <svg class="ico"><use href="#i-upload"/></svg><span>Загрузка</span>
+      </button>
+      <button class="rail__btn" data-nav="history" title="История">
+        <svg class="ico"><use href="#i-history"/></svg><span>История</span>
+      </button>
+      <button class="rail__btn" data-nav="settings" title="Настройки">
+        <svg class="ico"><use href="#i-settings"/></svg><span>Настройки</span>
+      </button>
+    </nav>
+
+    <div class="rail__status" id="rail-status" title="Состояние">
+      <span class="dot" id="status-dot"></span>
+      <span class="rail__status-text" id="status-text">…</span>
+    </div>
+  </aside>
+
+  <main class="stage">
+
+    <header class="topbar">
+      <div>
+        <h1 class="topbar__title" id="screen-title">Нарезка</h1>
+        <p class="topbar__sub" id="screen-sub">Длинное видео → вертикальные клипы с субтитрами</p>
+      </div>
+      <div class="topbar__chips" id="chips">
+        <span class="chip chip--ghost" id="chip-model">модель: …</span>
+        <span class="chip chip--ghost" id="chip-key">ключ: …</span>
+        <span class="chip chip--ghost" id="chip-browser">браузер: …</span>
+      </div>
+    </header>
+
+    <div class="screens" id="screens">
+
+      <!-- ===================== НАРЕЗКА ===================== -->
+      <section class="screen is-active" data-screen="cut">
+        <div class="layout-cut">
+
+          <div class="col-main">
+            <div class="card card--source" id="source-card">
+              <div class="drop" id="dropzone" tabindex="0" role="button" aria-label="Выбрать видео или перетащить файл">
+                <input type="file" id="file-input" accept="video/*,audio/*" hidden>
+                <svg class="drop__ico ico"><use href="#i-download"/></svg>
+                <p class="drop__title">Перетащи видео или нажми</p>
+                <p class="drop__hint">mp4, mov, mkv, mp3 · подойдёт подкаст, стрим, лекция</p>
+              </div>
+
+              <div class="or"><span>или</span></div>
+
+              <div class="url-row">
+                <svg class="ico url-row__ico"><use href="#i-link"/></svg>
+                <input class="input" id="yt-url" type="url" placeholder="https://youtube.com/watch?v=…" spellcheck="false">
+                <button class="btn btn--soft" id="yt-btn">Тянуть с YouTube</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">Параметры</h2>
+                <span class="card__note" id="estimate">—</span>
+              </div>
+
+              <div class="param">
+                <label class="param__label">Сколько клипов</label>
+                <div class="segmented" id="clips-seg" role="group" aria-label="Сколько клипов">
+                  <button data-clips="3">3</button>
+                  <button data-clips="5" class="is-active">5</button>
+                  <button data-clips="7">7</button>
+                  <button data-clips="10">10</button>
+                </div>
+              </div>
+
+              <div class="param">
+                <label class="param__label">Длина клипа</label>
+                <div class="segmented" id="dur-seg" role="group" aria-label="Длина клипа">
+                  <button data-dur="12,30">12–30 с</button>
+                  <button data-dur="18,60" class="is-active">18–60 с</button>
+                  <button data-dur="30,90">30–90 с</button>
+                </div>
+              </div>
+
+              <div class="param">
+                <label class="param__label">Стиль субтитров</label>
+                <div class="styles" id="style-seg" role="group" aria-label="Стиль субтитров">
+                  <button data-style="classic" class="style is-active">
+                    <span class="style__sample style__sample--classic">АБВ</span><span>Классика</span>
+                  </button>
+                  <button data-style="bold" class="style">
+                    <span class="style__sample style__sample--bold">АБВ</span><span>Жирный</span>
+                  </button>
+                  <button data-style="clean" class="style">
+                    <span class="style__sample style__sample--clean">Абв</span><span>Чистый</span>
+                  </button>
+                  <button data-style="neon" class="style">
+                    <span class="style__sample style__sample--neon">АБВ</span><span>Неон</span>
+                  </button>
+                </div>
+              </div>
+
+              <button class="btn btn--primary btn--wide" id="run-btn">
+                <svg class="ico"><use href="#i-bolt"/></svg><span>Нарезать</span>
+              </button>
+              <p class="card__foot" id="run-hint">Выбери файл или вставь ссылку</p>
+            </div>
+          </div>
+
+          <div class="col-side">
+            <div class="card card--job" id="job-card">
+              <div class="card__head">
+                <h2 class="card__title">Процесс</h2>
+                <button class="btn btn--ghost btn--tiny" id="cancel-btn" hidden>Отменить</button>
+              </div>
+
+              <div class="job-empty" id="job-empty">
+                <span class="job-empty__mark"></span>
+                <p>Тут будет прогресс: распознавание, выбор моментов, рендер.</p>
+              </div>
+
+              <div class="job-run" id="job-run" hidden>
+                <div class="progress">
+                  <div class="progress__bar"><span id="progress-fill"></span></div>
+                  <div class="progress__meta">
+                    <strong id="progress-pct">0%</strong>
+                    <span id="progress-stage">старт</span>
+                  </div>
+                </div>
+                <ol class="steps" id="steps">
+                  <li data-step="scan">Скан исходника</li>
+                  <li data-step="stt">Распознавание речи</li>
+                  <li data-step="llm">Выбор моментов</li>
+                  <li data-step="render">Рендер клипов</li>
+                </ol>
+                <pre class="terminal" id="log" aria-live="polite"></pre>
+              </div>
+            </div>
+
+            <div class="card card--tips">
+              <div class="card__head">
+                <h2 class="card__title">Что залетает</h2>
+                <span class="card__note">4 правила</span>
+              </div>
+              <ol class="tips">
+                <li><strong>Первые две секунды.</strong> Начало — на фразе-ударе, а не на вступлении.</li>
+                <li><strong>Один клип — одна мысль.</strong> Два панча в ролике = два пролистывания.</li>
+                <li><strong>Субтитры решают.</strong> Большинство смотрит без звука.</li>
+                <li><strong>Объём.</strong> 20 клипов в неделю минимум, иначе формат не поймать.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+
+        <section class="results" id="results" hidden>
+          <div class="results__head">
+            <div>
+              <h2 class="results__title">Готовые клипы <span class="count" id="clips-count">0</span></h2>
+              <p class="results__sub" id="results-sub">—</p>
+            </div>
+            <button class="btn btn--soft" id="open-folder">
+              <svg class="ico"><use href="#i-folder"/></svg><span>Открыть папку</span>
+            </button>
+          </div>
+
+          <div class="strip" id="strip" aria-hidden="true">
+            <div class="strip__track"><div class="strip__fill"></div></div>
+            <div class="strip__marks" id="strip-marks"></div>
+            <div class="strip__labels"><span>0:00</span><span id="strip-end">0:00</span></div>
+          </div>
+
+          <div class="clips" id="clips"></div>
+        </section>
+      </section>
+
+      <!-- ===================== ЗАГРУЗКА ===================== -->
+      <section class="screen" data-screen="upload">
+        <div class="layout-upload">
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">Что грузим</h2>
+              <span class="card__note" id="upload-source">—</span>
+            </div>
+            <div class="pick-list" id="pick-list">
+              <div class="empty">
+                <p>Сначала сделай нарезку — клипы появятся здесь.</p>
+                <button class="btn btn--soft" data-goto="cut">К нарезке</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__head"><h2 class="card__title">Куда</h2></div>
+
+            <div class="platforms" id="platforms">
+              <button class="platform is-active" data-platform="tiktok">
+                <span class="platform__dot" style="--c:#ffffff"></span>
+                <span class="platform__name">TikTok</span>
+                <span class="platform__hint">tiktokstudio</span>
+              </button>
+              <button class="platform" data-platform="youtube">
+                <span class="platform__dot" style="--c:#ff4444"></span>
+                <span class="platform__name">YouTube Shorts</span>
+                <span class="platform__hint">studio.youtube.com</span>
+              </button>
+              <button class="platform" data-platform="vk">
+                <span class="platform__dot" style="--c:#4f8bff"></span>
+                <span class="platform__name">VK Клипы</span>
+                <span class="platform__hint">vk.com</span>
+              </button>
+            </div>
+
+            <div class="param">
+              <label class="param__label">Браузер</label>
+              <div class="segmented" id="engine-seg" role="group" aria-label="Браузер">
+                <button data-engine="plain" class="is-active">Встроенный</button>
+                <button data-engine="dolphin">Dolphin</button>
+                <button data-engine="adspower">AdsPower</button>
+              </div>
+            </div>
+
+            <div class="param" id="profile-row">
+              <label class="param__label" for="profile-select">Профиль</label>
+              <div class="row">
+                <select class="input" id="profile-select">
+                  <option value="">по умолчанию</option>
+                </select>
+                <button class="btn btn--ghost btn--tiny" id="refresh-profiles" title="Обновить список профилей">Обновить</button>
+              </div>
+              <p class="hint" id="engine-hint">Сохранённые логины живут в локальном профиле Cutter.</p>
+            </div>
+
+            <div class="param">
+              <label class="param__label" for="visibility">Доступ</label>
+              <select class="input" id="visibility">
+                <option value="public">Публично</option>
+                <option value="unlisted">По ссылке</option>
+                <option value="private">Приватно</option>
+              </select>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="dry-run" checked>
+              <span class="switch__track"><span class="switch__thumb"></span></span>
+              <span class="switch__label">Тренировка: довести до кнопки и не публиковать</span>
+            </label>
+
+            <button class="btn btn--primary btn--wide" id="upload-btn" disabled>
+              <svg class="ico"><use href="#i-upload"/></svg><span id="upload-btn-text">Загрузить 0 клипов</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card card--result" id="upload-result" hidden>
+          <div class="card__head"><h2 class="card__title">Результат загрузки</h2></div>
+          <div id="upload-result-list" class="upload-list"></div>
+        </div>
+      </section>
+
+      <!-- ===================== ИСТОРИЯ ===================== -->
+      <section class="screen" data-screen="history">
+        <div class="card">
+          <div class="card__head">
+            <h2 class="card__title">Последние задачи</h2>
+            <button class="btn btn--ghost btn--tiny" id="history-refresh">Обновить</button>
+          </div>
+          <div class="history" id="history">
+            <div class="empty"><p>Пока пусто. Запусти первую нарезку.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== НАСТРОЙКИ ===================== -->
+      <section class="screen" data-screen="settings">
+        <div class="layout-settings">
+
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">Мозги</h2>
+              <span class="card__note">кто выбирает моменты</span>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="llm-provider">Провайдер</label>
+              <select class="input" id="llm-provider"></select>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="llm-model">Модель</label>
+              <select class="input" id="llm-model"></select>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="llm-key">API-ключ</label>
+              <div class="row">
+                <input class="input" id="llm-key" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
+                <button class="btn btn--soft btn--tiny" id="test-key">Проверить</button>
+              </div>
+              <p class="hint" id="llm-hint">Ключ хранится локально в app/data/settings.json</p>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="llm-fallback" checked>
+              <span class="switch__track"><span class="switch__thumb"></span></span>
+              <span class="switch__label">Если провайдер упал — пробовать следующие</span>
+            </label>
+          </div>
+
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">Слух</h2>
+              <span class="card__note">локальное распознавание</span>
+            </div>
+            <div class="models" id="models"></div>
+            <p class="hint">Модели качаются с ModelScope — из РФ работает без VPN.</p>
+          </div>
+
+          <div class="card">
+            <div class="card__head"><h2 class="card__title">Папки и язык</h2></div>
+            <div class="field">
+              <label class="field__label" for="outdir">Куда складывать клипы</label>
+              <input class="input" id="outdir" placeholder="по умолчанию: app/data/jobs">
+            </div>
+            <div class="field">
+              <label class="field__label" for="language">Язык исходника</label>
+              <select class="input" id="language">
+                <option value="ru">Русский</option>
+                <option value="en">Английский</option>
+                <option value="auto">Определять сам</option>
+              </select>
+            </div>
+            <button class="btn btn--primary" id="save-settings">Сохранить</button>
+          </div>
+
+          <div class="card card--about">
+            <div class="card__head"><h2 class="card__title">О приложении</h2></div>
+            <p class="about__text" id="about-text">Cutter 1.0 · локальная нарезка видео в вертикальные клипы.</p>
+            <p class="hint" id="about-stack">ffmpeg · faster-whisper · DeepSeek</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal__backdrop" data-close="1"></div>
+  <div class="modal__body" role="dialog" aria-modal="true" aria-label="Просмотр клипа">
+    <button class="modal__close" id="modal-close" aria-label="Закрыть">
+      <svg class="ico"><use href="#i-close"/></svg>
+    </button>
+    <video id="modal-video" controls playsinline></video>
+    <div class="modal__meta">
+      <strong id="modal-title"></strong>
+      <span id="modal-hook"></span>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>
