@@ -94,6 +94,8 @@ installer\build.ps1      # -> dist\Cutter-1.0.0-x64.msi
 
 ## Как устроено окно
 
+![Нативное окно Cutter](docs/shots/app-window.png)
+
 ```
 Cutter.exe  (C#, 37 КБ)          cutter_backend.exe  (Python, PyInstaller)
   ├─ запускает бэкенд               ├─ FastAPI на 127.0.0.1:8765
