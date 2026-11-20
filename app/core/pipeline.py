@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 import shutil
 import subprocess
@@ -109,14 +108,19 @@ class RenderedClip:
 # ---------------------------------------------------------------- медиа
 
 def _run(cmd: Sequence[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess:
-    result = subprocess.run(
-        list(cmd),
-        cwd=str(cwd) if cwd else None,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    try:
+        result = subprocess.run(
+            list(cmd),
+            cwd=str(cwd) if cwd else None,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError as exc:
+        raise PipelineError(
+            "не найден ffmpeg или ffprobe. Поставь ffmpeg в PATH или запусти собранную версию приложения"
+        ) from exc
     if result.returncode != 0:
         tail = (result.stderr or result.stdout or "").strip()[-1200:]
         raise PipelineError(f"ffmpeg упал: {tail}")

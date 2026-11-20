@@ -10,10 +10,9 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
-from typing import Any
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import jobs

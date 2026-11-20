@@ -12,7 +12,7 @@ import traceback
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Callable
 
 MAX_LOG_LINES = 400
 

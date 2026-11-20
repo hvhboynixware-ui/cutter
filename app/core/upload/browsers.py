@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
+
+from .base import BrowserTarget
 
 DOLPHIN_API = os.environ.get("DOLPHIN_API", "http://127.0.0.1:3001")
 ADSPOWER_API = os.environ.get("ADSPOWER_API", "http://local.adspower.net:50325")
@@ -261,7 +262,6 @@ def screenshot(session: BrowserSession, path: Path) -> Path | None:
 def wait_for_any(page, selectors: list[str], *, timeout: float = 60_000, visible: bool = True):
     """Ждёт первый селектор из списка. Возвращает локатор или None."""
     deadline = time.time() + timeout / 1000
-    last_error: Exception | None = None
     while time.time() < deadline:
         for selector in selectors:
             try:
@@ -271,7 +271,8 @@ def wait_for_any(page, selectors: list[str], *, timeout: float = 60_000, visible
                         return locator
                 elif locator.count() > 0:
                     return locator
-            except Exception as exc:
-                last_error = exc
+            except Exception:
+                # селектор ещё не появился — ждём дальше
+                pass
         time.sleep(0.4)
     return None
