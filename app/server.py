@@ -106,6 +106,13 @@ def providers() -> dict:
         return {"providers": [], "error": str(exc)[:300]}
 
 
+@app.get("/api/looks")
+def looks() -> dict:
+    """Пресеты кадра и музыка — для панели «Стиль кадра»."""
+    from .core import effects as FX
+    return {"effects": FX.effect_ids(), "music": FX.list_music()}
+
+
 @app.post("/api/providers/test")
 def provider_test(body: dict = Body(...)) -> dict:
     try:
@@ -167,11 +174,18 @@ async def analyze(
     path: str = Form(default=""),
     clips: int = Form(default=5),
     style: str = Form(default="classic"),
+    effect: str = Form(default="none"),
+    protection: str = Form(default="off"),
+    music: str = Form(default="none"),
+    music_volume: float = Form(default=0.18),
     min_dur: float = Form(default=18),
     max_dur: float = Form(default=60),
 ) -> dict:
     settings = S.load()
-    S.update({"render": {"clips": clips, "style": style, "min_dur": min_dur, "max_dur": max_dur}})
+    S.update({"render": {
+        "clips": clips, "style": style, "min_dur": min_dur, "max_dur": max_dur,
+        "effect": effect, "protection": protection, "music": music, "music_volume": music_volume,
+    }})
     settings = S.load()
 
     if file is None and not path.strip():
@@ -212,6 +226,10 @@ def youtube(body: dict = Body(...)) -> dict:
     S.update({"render": {
         "clips": int(body.get("clips", 5)),
         "style": body.get("style", "classic"),
+        "effect": body.get("effect", "none"),
+        "protection": body.get("protection", "off"),
+        "music": body.get("music", "none"),
+        "music_volume": float(body.get("music_volume", 0.18)),
         "min_dur": float(body.get("min_dur", 18)),
         "max_dur": float(body.get("max_dur", 60)),
     }})

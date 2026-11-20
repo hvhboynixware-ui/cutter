@@ -184,14 +184,18 @@ Set-AsciiTemp
 $toolDir = Get-WixToolDir -SourceDir $wixDir -RepoRootPath $repoRoot
 Write-Log "тулчейн: $toolDir"
 
-# --- icon ---
-$iconPath = Join-Path $scriptDir 'icon.ico'
-if ((-not (Test-Path $iconPath)) -and (-not $SkipIcon)) {
-    Write-Log 'icon.ico нет — генерирую через make-icon.ps1'
-    & (Join-Path $scriptDir 'make-icon.ps1') -OutFile $iconPath
-    if ($LASTEXITCODE -ne 0 -and -not (Test-Path $iconPath)) { Fail 'не удалось сгенерировать icon.ico (make-icon.ps1)' }
+# --- icon: сначала иконка из dist (она же в Cutter.exe), иначе installer\icon.ico ---
+$iconPath = Join-Path $DistDir 'icon.ico'
+if (-not (Test-Path $iconPath)) {
+    $iconPath = Join-Path $scriptDir 'icon.ico'
+    if ((-not (Test-Path $iconPath)) -and (-not $SkipIcon)) {
+        Write-Log 'icon.ico нет — генерирую через make-icon.ps1'
+        & (Join-Path $scriptDir 'make-icon.ps1') -OutFile $iconPath
+        if ($LASTEXITCODE -ne 0 -and -not (Test-Path $iconPath)) { Fail 'не удалось сгенерировать icon.ico (make-icon.ps1)' }
+    }
+    if (-not (Test-Path $iconPath)) { Fail "нет файла $iconPath (запустите make-icon.ps1 или положите .ico вручную)" }
 }
-if (-not (Test-Path $iconPath)) { Fail "нет файла $iconPath (запустите make-icon.ps1 или положите .ico вручную)" }
+Write-Log "иконка продукта/ARP: $iconPath"
 
 # --- dist ---
 if (-not (Test-Path $DistDir)) { Fail "нет папки dist: $DistDir — сначала соберите приложение (PyInstaller)" }
@@ -213,7 +217,11 @@ try {
     $productWxs = Join-Path $scriptDir 'Cutter.wxs'
     $productObj = Join-Path $objDir 'Cutter.wixobj'
 
-    # 1) heat: список файлов dist\Cutter -> ComponentGroup ProductComponents
+    # 1) heat: список файлов dist\Cutter -> ComponentGroup ProductComponents.
+    #    -t exclude-runtime.xsl: не тащим в установку data\webview2, data\logs и
+    #    прочие рантайм-хвосты, которые приложение создаёт при запуске.
+    $xslFilter = Join-Path $scriptDir 'exclude-runtime.xsl'
+    if (-not (Test-Path $xslFilter)) { Fail "нет XSL-фильтра $xslFilter" }
     Invoke-Tool -Exe (Join-Path $toolDir 'heat.exe') -Title 'heat: harvest dist\Cutter' -ToolArgs @(
         'dir', $DistDir,
         '-nologo',
@@ -223,6 +231,7 @@ try {
         '-srd',
         '-dr', 'INSTALLFOLDER',
         '-var', 'var.SourceDir',
+        '-t', $xslFilter,
         '-out', $filesWxs
     )
 
@@ -239,6 +248,7 @@ try {
         '-nologo', '-arch', 'x64',
         ("-dVersion={0}" -f $Version),
         ("-dSourceDir={0}" -f $DistDir),
+        ("-dIconPath={0}" -f $iconPath),
         '-out', $productObj,
         $productWxs
     )

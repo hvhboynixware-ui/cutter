@@ -153,6 +153,33 @@
                 </div>
               </div>
 
+              <div class="param">
+                <label class="param__label">Стиль кадра</label>
+                <div class="fx-row" id="fx-seg" role="group" aria-label="Стиль кадра"></div>
+              </div>
+
+              <div class="param">
+                <label class="param__label" for="music-select">Музыка</label>
+                <select class="input" id="music-select">
+                  <option value="none">Без музыки</option>
+                </select>
+                <div class="vol" id="vol-row" hidden>
+                  <input type="range" id="music-volume" min="5" max="60" step="1" value="18" aria-label="Громкость музыки">
+                  <span class="vol__value" id="vol-label">18%</span>
+                </div>
+                <p class="hint" id="music-hint">Треки сгенерированы для Cutter — claim'ов не будет.</p>
+              </div>
+
+              <div class="param">
+                <label class="param__label">Защита от повторов</label>
+                <div class="segmented" id="protect-seg" role="group" aria-label="Защита от повторов">
+                  <button data-protect="off" class="is-active">Выкл</button>
+                  <button data-protect="light">Лёгкая</button>
+                  <button data-protect="strong">Сильная</button>
+                </div>
+                <p class="hint">Флип, микро-зум, скорость и зерно — кадр перестаёт быть копией исходника.</p>
+              </div>
+
               <button class="btn btn--primary btn--wide" id="run-btn">
                 <svg class="ico"><use href="#i-bolt"/></svg><span>Нарезать</span>
               </button>
@@ -220,6 +247,13 @@
             <div class="strip__track"><div class="strip__fill"></div></div>
             <div class="strip__marks" id="strip-marks"></div>
             <div class="strip__labels"><span>0:00</span><span id="strip-end">0:00</span></div>
+          </div>
+
+          <div class="stats" id="stats">
+            <div class="stat"><strong id="stat-count">0</strong><span>клипов</span></div>
+            <div class="stat"><strong id="stat-duration">0:00</strong><span>всего секунд</span></div>
+            <div class="stat"><strong id="stat-score">0%</strong><span>средний скор</span></div>
+            <div class="stat"><strong id="stat-wpm">0</strong><span>слов в минуту</span></div>
           </div>
 
           <div class="clips" id="clips"></div>

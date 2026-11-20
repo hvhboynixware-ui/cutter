@@ -1,0 +1,74 @@
+[
+  {
+    "id": "lofi-chill",
+    "title": "Ночной лоу-фай",
+    "mood": "спокойное",
+    "bpm": 70,
+    "duration": 27.48,
+    "license": "original, generated for Cutter",
+    "file": "lofi-chill.mp3"
+  },
+  {
+    "id": "cinematic-pad",
+    "title": "Кинематографичная подложка",
+    "mood": "кинематографичное",
+    "bpm": 72,
+    "duration": 26.72,
+    "license": "original, generated for Cutter",
+    "file": "cinematic-pad.mp3"
+  },
+  {
+    "id": "podcast-intro",
+    "title": "Подкаст-интро",
+    "mood": "нейтральное",
+    "bpm": 92,
+    "duration": 20.92,
+    "license": "original, generated for Cutter",
+    "file": "podcast-intro.mp3"
+  },
+  {
+    "id": "dark-tension",
+    "title": "Тёмное напряжение",
+    "mood": "тревожное",
+    "bpm": 80,
+    "duration": 24.06,
+    "license": "original, generated for Cutter",
+    "file": "dark-tension.mp3"
+  },
+  {
+    "id": "upbeat-pop",
+    "title": "Бодрый поп",
+    "mood": "бодрое",
+    "bpm": 120,
+    "duration": 24.06,
+    "license": "original, generated for Cutter",
+    "file": "upbeat-pop.mp3"
+  },
+  {
+    "id": "minimal-tech",
+    "title": "Минимал-тех",
+    "mood": "минимализм",
+    "bpm": 124,
+    "duration": 23.3,
+    "license": "original, generated for Cutter",
+    "file": "minimal-tech.mp3"
+  },
+  {
+    "id": "emotional-piano",
+    "title": "Эмоциональное пианино",
+    "mood": "трогательное",
+    "bpm": 66,
+    "duration": 29.15,
+    "license": "original, generated for Cutter",
+    "file": "emotional-piano.mp3"
+  },
+  {
+    "id": "hype-trap",
+    "title": "Хайп-трэп",
+    "mood": "мотивационное",
+    "bpm": 140,
+    "duration": 20.64,
+    "license": "original, generated for Cutter",
+    "file": "hype-trap.mp3"
+  }
+]

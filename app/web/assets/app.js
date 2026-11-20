@@ -24,6 +24,18 @@ const el = {
   clipsSeg: $('#clips-seg'),
   durSeg: $('#dur-seg'),
   styleSeg: $('#style-seg'),
+  fxSeg: $('#fx-seg'),
+  musicSelect: $('#music-select'),
+  musicHint: $('#music-hint'),
+  volRow: $('#vol-row'),
+  musicVolume: $('#music-volume'),
+  volLabel: $('#vol-label'),
+  protectSeg: $('#protect-seg'),
+  stats: $('#stats'),
+  statCount: $('#stat-count'),
+  statDuration: $('#stat-duration'),
+  statScore: $('#stat-score'),
+  statWpm: $('#stat-wpm'),
   runBtn: $('#run-btn'),
   runHint: $('#run-hint'),
   estimate: $('#estimate'),
@@ -86,6 +98,11 @@ const state = {
   clipCount: 5,
   dur: [18, 60],
   style: 'classic',
+  effect: 'none',
+  protection: 'off',
+  music: 'none',
+  musicVolume: 18,
+  looks: { effects: [], music: [] },
   jobId: null,
   job: null,
   pollTimer: null,
@@ -270,6 +287,7 @@ function renderClips(clips, source) {
           <span>·</span>
           <span>${(clip.hashtags || []).length ? esc(clip.hashtags.slice(0, 2).join(' ')) : 'без тегов'}</span>
         </div>
+        <div class="clip__meta clip__meta--dense">${esc(clipMetrics(clip))}</div>
         <div class="clip__actions">
           <button class="clip__btn" data-download="${esc(clip.video_url)}">Скачать</button>
           <button class="clip__btn clip__btn--accent" data-upload="${esc(clip.id)}">Грузить</button>
@@ -279,6 +297,39 @@ function renderClips(clips, source) {
   });
 
   renderStrip(clips);
+  renderStats(clips);
+}
+
+function renderStats(clips) {
+  if (!clips.length) {
+    el.stats.hidden = true;
+    return;
+  }
+  el.stats.hidden = false;
+  const totalDuration = clips.reduce((sum, clip) => sum + (Number(clip.duration) || 0), 0);
+  const avgScore = Math.round(clips.reduce((sum, clip) => sum + (Number(clip.score) || 0), 0) / clips.length);
+  const wpms = clips.map((clip) => Number(clip.wpm) || 0).filter((value) => value > 0);
+  const avgWpm = wpms.length ? Math.round(wpms.reduce((a, b) => a + b, 0) / wpms.length) : 0;
+  el.statCount.textContent = String(clips.length);
+  el.statDuration.textContent = fmtDuration(totalDuration);
+  el.statScore.textContent = `${avgScore}%`;
+  el.statWpm.textContent = String(avgWpm);
+}
+
+function clipMetrics(clip) {
+  const parts = [
+    `${Number(clip.words) || 0} сл.`,
+    `${Number(clip.wpm) || 0}/мин`,
+  ];
+  if (clip.effect && clip.effect !== 'none') {
+    const fx = (state.looks.effects || []).find((item) => item.id === clip.effect);
+    parts.push(fx ? fx.label : clip.effect);
+  }
+  if (clip.music && clip.music !== 'none') {
+    const track = (state.looks.music || []).find((item) => item.id === clip.music);
+    parts.push(track ? `♫ ${track.title}` : '♫');
+  }
+  return parts.join(' · ');
 }
 
 function renderStrip(clips) {
@@ -371,12 +422,68 @@ el.styleSeg.addEventListener('click', (event) => {
   updateRunHint();
 });
 
+/* ---------------------------------------------------------------- стиль кадра, музыка, защита */
+
+function renderLooks() {
+  const effects = state.looks.effects || [];
+  el.fxSeg.innerHTML = effects.map((fx) => `
+    <button class="fx${fx.id === state.effect ? ' is-active' : ''}" data-fx="${esc(fx.id)}" title="${esc(fx.hint || '')}">
+      <span class="fx__dot" style="--tone:${esc(fx.tone || '#6b675e')}"></span>
+      <span class="fx__label">${esc(fx.label)}</span>
+    </button>`).join('');
+
+  const music = state.looks.music || [];
+  const options = ['<option value="none">Без музыки</option>']
+    .concat(music.map((track) => `<option value="${esc(track.id)}">${esc(track.title)}${track.mood ? ' · ' + esc(track.mood) : ''}</option>`));
+  el.musicSelect.innerHTML = options.join('');
+  el.musicSelect.value = music.some((track) => track.id === state.music) ? state.music : 'none';
+  el.musicHint.textContent = music.length
+    ? 'Треки сгенерированы для Cutter — claim\'ов не будет.'
+    : 'Пак музыки не установлен. Можно рендерить без подложки.';
+  updateVolumeVisibility();
+}
+
+function updateVolumeVisibility() {
+  const hasMusic = state.music && state.music !== 'none';
+  el.volRow.hidden = !hasMusic;
+  el.volLabel.textContent = `${state.musicVolume}%`;
+  el.musicVolume.value = String(state.musicVolume);
+}
+
+el.fxSeg.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-fx]');
+  if (!button) return;
+  state.effect = button.dataset.fx;
+  $$('.fx', el.fxSeg).forEach((b) => b.classList.toggle('is-active', b === button));
+  updateRunHint();
+});
+
+el.musicSelect.addEventListener('change', () => {
+  state.music = el.musicSelect.value;
+  updateVolumeVisibility();
+});
+
+el.musicVolume.addEventListener('input', () => {
+  state.musicVolume = Number(el.musicVolume.value);
+  el.volLabel.textContent = `${state.musicVolume}%`;
+});
+
+el.protectSeg.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-protect]');
+  if (!button) return;
+  state.protection = button.dataset.protect;
+  $$('button[data-protect]', el.protectSeg).forEach((b) => b.classList.toggle('is-active', b === button));
+});
+
 function updateRunHint() {
   const hasSource = Boolean(state.file) || Boolean(el.ytUrl.value.trim());
   el.runBtn.disabled = !hasSource;
-  el.runHint.textContent = hasSource
-    ? `${state.clipCount} клипов · ${state.dur[0]}–${state.dur[1]} с · ${STYLE_LABELS[state.style]}`
-    : 'Выбери файл или вставь ссылку';
+  const fx = (state.looks.effects || []).find((item) => item.id === state.effect);
+  const parts = [`${state.clipCount} клипов`, `${state.dur[0]}–${state.dur[1]} с`, STYLE_LABELS[state.style]];
+  if (fx && fx.id !== 'none') parts.push(fx.label);
+  if (state.music !== 'none') parts.push('музыка');
+  if (state.protection !== 'off') parts.push('защита');
+  el.runHint.textContent = hasSource ? parts.join(' · ') : 'Выбери файл или вставь ссылку';
   el.estimate.textContent = `${state.clipCount} клипов · ${state.dur[0]}–${state.dur[1]} с`;
 }
 
@@ -536,6 +643,10 @@ el.runBtn.addEventListener('click', async () => {
         url,
         clips: state.clipCount,
         style: state.style,
+        effect: state.effect,
+        protection: state.protection,
+        music: state.music,
+        music_volume: state.musicVolume / 100,
         min_dur: state.dur[0],
         max_dur: state.dur[1],
       });
@@ -551,6 +662,10 @@ el.runBtn.addEventListener('click', async () => {
     form.append('file', state.file);
     form.append('clips', state.clipCount);
     form.append('style', state.style);
+    form.append('effect', state.effect);
+    form.append('protection', state.protection);
+    form.append('music', state.music);
+    form.append('music_volume', state.musicVolume / 100);
     form.append('min_dur', state.dur[0]);
     form.append('max_dur', state.dur[1]);
     const data = await api('/api/analyze', { method: 'POST', body: form });
@@ -976,6 +1091,20 @@ async function boot() {
     el.visibility.value = state.settings.upload.visibility || 'public';
     state.engine = state.settings.upload.engine || 'plain';
     $$('button[data-engine]', el.engineSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.engine === state.engine));
+
+    const render = state.settings.render || {};
+    state.clipCount = Number(render.clips) || 5;
+    state.style = render.style || 'classic';
+    state.effect = render.effect || 'none';
+    state.protection = render.protection || 'off';
+    state.music = render.music || 'none';
+    state.musicVolume = Math.round((Number(render.music_volume) || 0.18) * 100);
+    state.dur = [Number(render.min_dur) || 18, Number(render.max_dur) || 60];
+
+    $$('button[data-clips]', el.clipsSeg).forEach((b) => b.classList.toggle('is-active', Number(b.dataset.clips) === state.clipCount));
+    $$('button[data-style]', el.styleSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.style === state.style));
+    $$('button[data-protect]', el.protectSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.protect === state.protection));
+
     if (state.settings.llm.api_key) {
       el.llmHint.dataset.hasKey = '1';
     }
@@ -983,6 +1112,14 @@ async function boot() {
   } catch (error) {
     toast(error.message, 'err');
   }
+
+  try {
+    state.looks = await api('/api/looks');
+  } catch {
+    state.looks = { effects: [], music: [] };
+  }
+  renderLooks();
+  updateRunHint();
 
   await refreshModels();
   updateRunHint();

@@ -79,6 +79,11 @@ class RenderedClip:
     hashtags: list = field(default_factory=list)
     reason: str = ""
     score: int = 0
+    words: int = 0
+    wpm: int = 0
+    effect: str = "none"
+    protection: str = "off"
+    music: str = "none"
 
     def to_dict(self) -> dict:
         return {
@@ -93,6 +98,11 @@ class RenderedClip:
             "hashtags": self.hashtags,
             "reason": self.reason,
             "score": self.score,
+            "words": self.words,
+            "wpm": self.wpm,
+            "effect": self.effect,
+            "protection": self.protection,
+            "music": self.music,
         }
 
 
@@ -332,24 +342,31 @@ def write_ass(path: Path, cues: Iterable[tuple[float, float, str]], style: dict,
 
 # ---------------------------------------------------------------- рендер
 
-def build_video_filter(ass_name: str, ratio: float, background: str) -> str:
+def build_video_filter(ass_name: str, ratio: float, background: str,
+                       chain: str = "", speed: float = 1.0) -> str:
+    """Собирает граф кадра: кадрирование -> эффекты/защита -> скорость -> субтитры."""
+    extra = ""
+    if chain:
+        extra += f",{chain}"
+    if speed and abs(speed - 1.0) > 0.001:
+        extra += f",setpts=PTS/{speed:.4f}"
+    if extra:
+        # защита/зум меняют размер на пару пикселей — возвращаем ровно 1080x1920
+        extra += f",scale={W}:{H}:flags=lanczos,setsar=1"
+
     if ratio <= 0.62 or background == "crop":
-        scale = (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
-                 f"crop={W}:{H}")
-    elif background == "black":
-        scale = (f"[0:v]scale={W}:-2:flags=lanczos,"
-                 f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x0a0a0f")
-    else:
-        scale = (
-            f"[0:v]split=2[bg][fg];"
-            f"[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-            f"gblur=sigma=42,eq=brightness=-0.12[bg2];"
-            f"[fg]scale={W}:-2:flags=lanczos[fg2];"
-            f"[bg2][fg2]overlay=(W-w)/2:(H-h)/2"
-        )
-    if scale.startswith("[0:v]split"):
-        return f"{scale},ass={ass_name}[v]"
-    return f"{scale},ass={ass_name}[v]"
+        return (f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
+                f"crop={W}:{H}{extra},ass={ass_name}[v]")
+    if background == "black":
+        return (f"[0:v]scale={W}:-2:flags=lanczos,"
+                f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x0a0a0f{extra},ass={ass_name}[v]")
+    return (
+        f"[0:v]split=2[bg][fg];"
+        f"[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+        f"gblur=sigma=42,eq=brightness=-0.12[bg2];"
+        f"[fg]scale={W}:-2:flags=lanczos[fg2];"
+        f"[bg2][fg2]overlay=(W-w)/2:(H-h)/2{extra},ass={ass_name}[v]"
+    )
 
 
 def render_clip(
@@ -365,20 +382,31 @@ def render_clip(
     crf: int,
     fps: int,
     background: str,
+    effect: str = "none",
+    protection: str = "off",
+    music: Path | None = None,
+    music_volume: float = 0.18,
 ) -> None:
+    from . import effects as FX
+
     duration = max(0.5, end - start)
+    chain = FX.compose_video_chain(effect, protection)
+    _, protection_cfg = FX.protection_filter(protection)
+    video_graph = build_video_filter(ass_path.name, ratio, background,
+                                     chain=chain, speed=protection_cfg.speed or 1.0)
+    audio_args, audio_graph = FX.build_audio_graph(
+        has_source_audio=has_audio, music=music, music_volume=music_volume,
+    )
+
+    graph = video_graph if not audio_graph else f"{video_graph};{audio_graph}"
     cmd = [
         S.ffmpeg_path(), "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{start:.3f}", "-t", f"{duration:.3f}", "-i", str(src.resolve()),
-        "-filter_complex", build_video_filter(ass_path.name, ratio, background),
-        "-map", "[v]",
     ]
-    if has_audio:
-        cmd += [
-            "-map", "0:a?",
-            "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
-            "-c:a", "aac", "-b:a", "160k", "-ar", "48000",
-        ]
+    cmd += audio_args
+    cmd += ["-filter_complex", graph, "-map", "[v]"]
+    if audio_graph:
+        cmd += ["-map", "[a]", "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-shortest"]
     cmd += [
         "-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf),
         "-pix_fmt", "yuv420p", "-r", str(fps),
@@ -530,6 +558,22 @@ def analyze(
 
     style_key = render_cfg.get("style", "classic")
     style = STYLES.get(style_key, STYLES["classic"])
+    effect_key = render_cfg.get("effect", "none")
+    protection_key = render_cfg.get("protection", "off")
+    music_id = render_cfg.get("music", "none")
+    music_volume = float(render_cfg.get("music_volume", 0.18))
+
+    from . import effects as FX
+    music_file = FX.music_path(music_id)
+    if music_id and music_id != FX.MUSIC_ID_NONE and music_file is None:
+        log(f"музыка «{music_id}» не найдена — рендерю без неё")
+    elif music_file is not None:
+        log(f"подложка: {music_file.name}, громкость {int(music_volume * 100)}%")
+    if effect_key != "none":
+        log(f"эффект кадра: {FX.get_effect(effect_key).label}")
+    if protection_key != "off":
+        log(f"защита от повторов: {protection_key}")
+
     ratio = (info["width"] / info["height"]) if info["height"] else 16 / 9
     clips: list[RenderedClip] = []
 
@@ -554,16 +598,25 @@ def analyze(
             workdir=work, ratio=ratio, has_audio=info["has_audio"],
             crf=int(render_cfg.get("crf", 20)), fps=int(render_cfg.get("fps", 30)),
             background=style.get("background", "blur"),
+            effect=effect_key, protection=protection_key,
+            music=music_file, music_volume=music_volume,
         )
         make_preview(clips_dir / file_name, previews_dir / preview_name)
+
+        clip_words = [w for w in words if w.end > moment.start and w.start < moment.end]
+        duration = max(0.1, moment.end - moment.start)
         clip = RenderedClip(
             index=index, file=file_name, preview=preview_name,
             start=moment.start, end=moment.end, duration=moment.end - moment.start,
             title=moment.title, hook=moment.hook, hashtags=list(moment.hashtags),
             reason=moment.reason, score=int(moment.score),
+            words=len(clip_words),
+            wpm=int(round(len(clip_words) / duration * 60)),
+            effect=effect_key, protection=protection_key,
+            music=music_id if music_file is not None else "none",
         )
         clips.append(clip)
-        log(f"клип {index}: {int(clip.duration)}с, {clip.title[:60] or 'без заголовка'}")
+        log(f"клип {index}: {int(clip.duration)}с, {clip.words} сл., {clip.title[:50] or 'без заголовка'}")
 
     if not clips:
         raise PipelineError("ни один момент не удалось отрендерить")

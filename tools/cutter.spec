@@ -11,6 +11,7 @@ FFMPEG_DIR = Path(os.environ.get("CUTTER_FFMPEG_DIR", r"C:\Users\ogkysh\Tools\ff
 
 datas = [
     (str(ROOT / "app" / "web"), "app/web"),
+    (str(ROOT / "app" / "assets"), "app/assets"),
     (str(ROOT / "app" / "window" / "icon.ico"), "app/window"),
 ]
 datas += collect_data_files("faster_whisper")

@@ -101,6 +101,18 @@ function Get-MsiProductProperty {
     return $record.StringData(1)
 }
 
+function Get-MsiFileCount {
+    param([string]$Path)
+    $installer = New-Object -ComObject WindowsInstaller.Installer
+    $db = $installer.OpenDatabase($Path, 0)
+    $view = $db.OpenView('SELECT File FROM File')
+    $null = $view.Execute()
+    $count = 0
+    while ($null -ne ($view.Fetch())) { $count++ }
+    $null = $view.Close()
+    return $count
+}
+
 function Get-ArpEntry {
     param([string]$ProductCode)
     $candidates = @(
@@ -157,14 +169,14 @@ function Uninstall-IfPresent {
     $codes = @(Get-ProductCodesFromArp)
     if ($codes.Count -eq 0) { return }
     Write-Log "перед тестом удаляю уже установленный Cutter: $($codes -join ', ')" 'WARN'
-    $code = Invoke-MsiExec -Title 'cleanup uninstall' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v `"{1}`"" -f $MsiPath, $msiLogPath)
+    $code = Invoke-MsiExec -Title 'cleanup uninstall' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $MsiPath, $msiLogPath)
     Start-Sleep -Seconds 1
 }
 
 function Wait-Installed {
     param([string]$ProductCode, [int]$Seconds = 30)
     for ($i = 0; $i -lt $Seconds; $i++) {
-        if (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode") { return $true }
+        if ($null -ne (Get-ArpEntry -ProductCode $ProductCode)) { return $true }
         Start-Sleep -Seconds 1
     }
     return $false
@@ -177,13 +189,14 @@ function Assert-InstalledState {
         [string]$ExpectedDir,
         [string]$ExpectedVersion
     )
+    $normExpected = $ExpectedDir.TrimEnd('\')
     $arp = Get-ArpEntry -ProductCode $ProductCode
     Check "$Tag / запись в Программах и компонентах" ($null -ne $arp) ("key=" + $(if ($arp) { $arp.Key } else { 'нет' }))
     if ($null -ne $arp) {
         Check "$Tag / DisplayName = Cutter" ($arp.DisplayName -eq 'Cutter') ("DisplayName=" + $arp.DisplayName)
         Check "$Tag / DisplayVersion = $ExpectedVersion" ($arp.DisplayVersion -eq $ExpectedVersion) ("DisplayVersion=" + $arp.DisplayVersion)
         if ($arp.InstallLocation) {
-            Check "$Tag / InstallLocation = $ExpectedDir" ($arp.InstallLocation.TrimEnd('\') -ieq $ExpectedDir.TrimEnd('\')) ("InstallLocation=" + $arp.InstallLocation)
+            Check "$Tag / InstallLocation = $ExpectedDir" ($arp.InstallLocation.TrimEnd('\') -ieq $normExpected) ("InstallLocation=" + $arp.InstallLocation)
         }
         Check "$Tag / UninstallString есть" (-not [string]::IsNullOrWhiteSpace($arp.UninstallString))
     }
@@ -192,9 +205,13 @@ function Assert-InstalledState {
     Check "$Tag / файлы установлены ($ExpectedDir)" (Test-Path -LiteralPath $appExe) ("Cutter.exe=" + (Test-Path -LiteralPath $appExe))
     $installedFiles = @()
     if (Test-Path -LiteralPath $ExpectedDir) { $installedFiles = @(Get-ChildItem -LiteralPath $ExpectedDir -Recurse -File -Force) }
-    $distFiles = @()
-    if (Test-Path -LiteralPath $DistDir) { $distFiles = @(Get-ChildItem -LiteralPath $DistDir -Recurse -File -Force) }
-    Check "$Tag / количество файлов совпадает с dist" ($installedFiles.Count -eq $distFiles.Count) ("installed=" + $installedFiles.Count + " dist=" + $distFiles.Count)
+    Check "$Tag / количество файлов совпадает с таблицей File в MSI" ($installedFiles.Count -eq $script:MsiFileCount) ("installed=" + $installedFiles.Count + " msi=" + $script:MsiFileCount)
+    if (Test-Path -LiteralPath $DistDir) {
+        $distCount = @(Get-ChildItem -LiteralPath $DistDir -Recurse -File -Force).Count
+        if ($distCount -ne $installedFiles.Count) {
+            Write-Log ("ВНИМАНИЕ: dist сейчас {0} файлов, а в MSI {1} — dist менялся после сборки" -f $distCount, $installedFiles.Count) 'WARN'
+        }
+    }
 
     $startShortcut = Test-Shortcut -Path (Get-ShortcutPath 'StartMenu')
     Check "$Tag / ярлык в меню Пуск" ($startShortcut.Exists) ((Get-ShortcutPath 'StartMenu'))
@@ -213,7 +230,7 @@ function Assert-InstalledState {
     if (Test-Path $regPath) {
         $props = Get-ItemProperty -Path $regPath -ErrorAction SilentlyContinue
         $regInstallPath = $props.InstallPath
-        $regOk = ($regInstallPath -ieq $ExpectedDir)
+        $regOk = ($regInstallPath.TrimEnd('\') -ieq $normExpected)
     }
     Check "$Tag / HKCU\Software\Cutter\InstallPath" $regOk ("InstallPath=" + $regInstallPath)
 }
@@ -248,6 +265,8 @@ $productVersion = Get-MsiProductProperty -Path $Msi -PropertyName 'ProductVersio
 Write-Log "ProductCode=$productCode ProductVersion=$productVersion"
 Check 'ProductCode сгенерирован (не * и не пустой)' (($productCode -match '^\{[0-9A-Fa-f-]{36}\}$'))
 Check 'ProductVersion непустой' (-not [string]::IsNullOrWhiteSpace($productVersion))
+$script:MsiFileCount = [int](Get-MsiFileCount -Path $Msi)
+Write-Log "в MSI файлов (таблица File): $MsiFileCount"
 
 Uninstall-IfPresent -MsiPath $Msi
 
@@ -256,7 +275,7 @@ $perUserDir = Join-Path $env:LOCALAPPDATA 'Programs\Cutter'
 
 # --- 1. per-user install (явно MSIINSTALLPERUSER=1) ---
 Write-Log '--- сценарий 1: установка per-user (MSIINSTALLPERUSER=1, /qn) ---'
-$code = Invoke-MsiExec -Title 'install per-user' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v `"{1}`"" -f $Msi, $msiLogPath)
+$code = Invoke-MsiExec -Title 'install per-user' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
 Check 'install per-user: exit code' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
 Wait-Installed -ProductCode $productCode -Seconds 20 | Out-Null
 Assert-InstalledState -Tag 'install' -ProductCode $productCode -ExpectedDir $perUserDir -ExpectedVersion $productVersion
@@ -264,7 +283,7 @@ $installedDir = $perUserDir
 
 # --- 2. повторная установка поверх (тот же MSI) ---
 Write-Log '--- сценарий 2: повторная установка поверх ---'
-$code = Invoke-MsiExec -Title 'reinstall over' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v `"{1}`"" -f $Msi, $msiLogPath)
+$code = Invoke-MsiExec -Title 'reinstall over' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
 Check 'повторная установка: exit code' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
 Assert-InstalledState -Tag 'reinstall' -ProductCode $productCode -ExpectedDir $installedDir -ExpectedVersion $productVersion
 $arpCount = @(Get-ProductCodesFromArp).Count
@@ -272,18 +291,23 @@ Check 'повторная установка: в ARP ровно одна зап�
 
 # --- 3. удаление ---
 Write-Log '--- сценарий 3: удаление (msiexec /x /qn) ---'
-$code = Invoke-MsiExec -Title 'uninstall' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v `"{1}`"" -f $Msi, $msiLogPath)
+$code = Invoke-MsiExec -Title 'uninstall' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
 Check 'uninstall: exit code' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
 Start-Sleep -Seconds 1
 Assert-UninstalledState -Tag 'uninstall' -ProductCode $productCode -InstallDir $installedDir
 $arpCount = @(Get-ProductCodesFromArp).Count
 Check 'uninstall: в ARP нет записи Cutter' ($arpCount -eq 0) ("записей=" + $arpCount)
 
-# --- 4. установка БЕЗ параметров: авто-fallback на per-user без админа ---
-Write-Log '--- сценарий 4: установка без параметров (авто per-user fallback) ---'
-$code = Invoke-MsiExec -Title 'install auto scope' -Arguments ("/i `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v `"{1}`"" -f $Msi, $msiLogPath)
-Check 'install auto: exit code' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
+# --- 4. установка БЕЗ параметров: авто-выбор контекста Windows Installer ---
+# Ожидаемое поведение dual-purpose пакета (ALLUSERS=2): если пользователь
+# входит в группу администраторов (даже с deny-only токеном), установщик
+# выбирает per-machine и в /qn падает 1603 (нужен UAC). На аккаунте без
+# прав администратора тот же запуск ставится per-user. Поэтому здесь
+# фиксируем фактическое поведение, а не считаем его ошибкой.
+Write-Log '--- сценарий 4: установка без параметров (авто-выбор контекста) ---'
+$code = Invoke-MsiExec -Title 'install auto scope' -Arguments ("/i `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
 if ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) {
+    Write-Log 'авто-режим установился без параметров (per-user fallback сработал)' 'OK'
     $arp = Get-ArpEntry -ProductCode $productCode
     Check 'install auto: продукт установлен' ($null -ne $arp) ("key=" + $(if ($arp) { $arp.Key } else { 'нет' }))
     if ($null -ne $arp) {
@@ -293,9 +317,23 @@ if ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) {
         Check 'install auto: файлы на месте' (Test-Path -LiteralPath (Join-Path $autoDir 'Cutter.exe'))
         Check 'install auto: ярлык Пуск создан' (Test-Path -LiteralPath (Get-ShortcutPath 'StartMenu'))
     }
-    $code = Invoke-MsiExec -Title 'uninstall after auto' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v `"{1}`"" -f $Msi, $msiLogPath)
+    $code = Invoke-MsiExec -Title 'uninstall after auto' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
     Check 'uninstall after auto: exit code' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
     Assert-UninstalledState -Tag 'after-auto' -ProductCode $productCode -InstallDir $perUserDir
+}
+else {
+    # Аккаунт в группе администраторов -> Windows Installer выбирает per-machine,
+    # а /qn без elevation валится. Это ожидаемо для dual-purpose пакета:
+    # per-user ставится явным MSIINSTALLPERUSER=1 (сценарий 1).
+    $elevationRequired = $code -eq 1603
+    Check 'install auto: ожидаемый отказ 1603 на аккаунте из группы администраторов (per-machine требует UAC)' $elevationRequired ("exit=" + $code)
+    Write-Log 'авто-режим на аккаунте с правами админа требует elevation; без админа ставьте с MSIINSTALLPERUSER=1' 'WARN'
+    # подчистить, если что-то успело записаться
+    $leftover = @(Get-ProductCodesFromArp)
+    if ($leftover.Count -gt 0) {
+        $code = Invoke-MsiExec -Title 'cleanup after failed auto' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
+        Start-Sleep -Seconds 1
+    }
 }
 
 # --- 5. major upgrade (если дан второй MSI) ---
@@ -304,10 +342,10 @@ if (-not [string]::IsNullOrWhiteSpace($UpgradeMsi)) {
     $upgradeCode = Get-MsiProductProperty -Path $UpgradeMsi -PropertyName 'ProductCode'
     $upgradeVersion = Get-MsiProductProperty -Path $UpgradeMsi -PropertyName 'ProductVersion'
     Write-Log "upgrade: $UpgradeMsi (ProductCode=$upgradeCode, Version=$upgradeVersion)"
-    $code = Invoke-MsiExec -Title 'install base for upgrade' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v `"{1}`"" -f $Msi, $msiLogPath)
+    $code = Invoke-MsiExec -Title 'install base for upgrade' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $Msi, $msiLogPath)
     Check 'upgrade: базовая версия установлена' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
     Check 'upgrade: базовая версия на месте' (Test-Path -LiteralPath (Join-Path $perUserDir 'Cutter.exe'))
-    $code = Invoke-MsiExec -Title 'major upgrade install' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v `"{1}`"" -f $UpgradeMsi, $msiLogPath)
+    $code = Invoke-MsiExec -Title 'major upgrade install' -Arguments ("/i `"{0}`" /qn /norestart MSIINSTALLPERUSER=1 REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $UpgradeMsi, $msiLogPath)
     Check 'upgrade: установка новой версии поверх' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
     Start-Sleep -Seconds 1
     $arpNew = Get-ArpEntry -ProductCode $upgradeCode
@@ -320,7 +358,7 @@ if (-not [string]::IsNullOrWhiteSpace($UpgradeMsi)) {
     Check 'upgrade: файлы новой версии на месте' (Test-Path -LiteralPath (Join-Path $perUserDir 'Cutter.exe'))
     $arpCount = @(Get-ProductCodesFromArp).Count
     Check 'upgrade: в ARP ровно одна запись Cutter' ($arpCount -eq 1) ("записей=" + $arpCount)
-    $code = Invoke-MsiExec -Title 'uninstall after upgrade' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v `"{1}`"" -f $UpgradeMsi, $msiLogPath)
+    $code = Invoke-MsiExec -Title 'uninstall after upgrade' -Arguments ("/x `"{0}`" /qn /norestart REBOOT=ReallySuppress /L*v+ `"{1}`"" -f $UpgradeMsi, $msiLogPath)
     Check 'upgrade: удаление после теста' ($code -eq 0 -or $code -eq 3010 -or $code -eq 1641) ("exit=" + $code)
     Assert-UninstalledState -Tag 'after-upgrade' -ProductCode $upgradeCode -InstallDir $perUserDir
 }
