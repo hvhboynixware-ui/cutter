@@ -63,7 +63,7 @@
 Нужны **Python 3.11+** и **ffmpeg** в `PATH` (проверка: `ffmpeg -version`).
 
 ```bat
-git clone https://github.com/YOUR-NAME/cutter.git
+git clone https://github.com/hvhboynixware-ui/cutter.git
 cd cutter
 run.bat
 ```
