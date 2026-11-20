@@ -24,3 +24,7 @@ desktop.ini
 .idea/
 .vscode/
 *.swp
+
+# pytest
+.pytest_cache/
+pytest-of-*/
