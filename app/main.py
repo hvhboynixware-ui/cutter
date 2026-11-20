@@ -2,11 +2,12 @@
 """Точка входа: локальный сервер + окно приложения.
 
 Режимы окна (--window-mode):
-  auto    — сначала нативное окно (pywebview), если не поднялось — окно Edge/Chrome в режиме приложения
+  auto    — нативное окно Cutter.exe (WebView2); если его нет — pywebview, окно Edge, вкладка
+  window  — только нативное окно Cutter.exe
   native  — только pywebview
-  app     — только окно Edge/Chrome без адресной строки
+  app     — окно Edge/Chrome без адресной строки
   browser — обычная вкладка в браузере по умолчанию
-  none    — только сервер, без окна (отладка UI)
+  none    — только сервер, без окна (этот режим использует Cutter.exe)
 """
 
 from __future__ import annotations
@@ -26,10 +27,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import uvicorn  # noqa: E402
 
+from app.core import settings as S  # noqa: E402
 from app.server import app  # noqa: E402
 
 APP_TITLE = "Cutter — нарезка в шортсы"
-DATA_DIR = Path(__file__).resolve().parent / "data"
 
 BROWSERS = [
     (r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", "edge"),
@@ -65,6 +66,19 @@ def wait_ready(url: str, timeout: float = 25.0) -> bool:
     return False
 
 
+def native_window_exe() -> Path | None:
+    """Где лежит собранное нативное окно Cutter.exe."""
+    candidates = []
+    if S.FROZEN:
+        candidates.append(Path(sys.executable).resolve().parent / "Cutter.exe")
+    candidates.append(S.ROOT / "build" / "native" / "Cutter.exe")
+    candidates.append(S.ROOT / "Cutter.exe")
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 def find_browser() -> tuple[str, str] | None:
     for path, kind in BROWSERS:
         if path and Path(path).is_file():
@@ -72,31 +86,42 @@ def find_browser() -> tuple[str, str] | None:
     return None
 
 
-def open_native_window(url: str, width: int, height: int) -> bool:
-    """Нативное окно через pywebview. Возвращает False, если не поднялось."""
+def run_native_window(url: str, width: int, height: int) -> bool:
+    exe = native_window_exe()
+    if exe is None:
+        return False
+    print(f"окно: {exe.name}")
+    try:
+        process = subprocess.Popen([str(exe), "--url", url, "--width", str(width), "--height", str(height)])
+    except Exception as exc:
+        print(f"нативное окно не запустилось: {exc}", file=sys.stderr)
+        return False
+    process.wait()
+    return True
+
+
+def run_pywebview(url: str, width: int, height: int) -> bool:
     try:
         import webview
     except Exception as exc:
-        print(f"нативное окно недоступно ({exc})", file=sys.stderr)
+        print(f"pywebview недоступен ({exc})", file=sys.stderr)
         return False
-
     try:
         webview.create_window(APP_TITLE, url, width=width, height=height,
                               min_size=(1120, 720), background_color="#0b0b12")
         webview.start()
         return True
     except Exception as exc:
-        print(f"нативное окно не запустилось ({str(exc)[:200]})", file=sys.stderr)
+        print(f"pywebview не запустился ({str(exc)[:160]})", file=sys.stderr)
         return False
 
 
-def open_app_window(url: str, width: int, height: int) -> bool:
-    """Окно браузера в режиме приложения: без адресной строки, отдельный профиль."""
+def run_app_window(url: str, width: int, height: int) -> bool:
     found = find_browser()
     if not found:
         return False
     exe, _kind = found
-    profile = DATA_DIR / "window_profile"
+    profile = S.DATA_DIR / "window_profile"
     profile.mkdir(parents=True, exist_ok=True)
     args = [
         exe,
@@ -105,9 +130,8 @@ def open_app_window(url: str, width: int, height: int) -> bool:
         f"--user-data-dir={profile}",
         "--no-first-run",
         "--no-default-browser-check",
-        "--disable-features=Translate",
     ]
-    print(f"открываю окно через {Path(exe).name}")
+    print(f"окно браузера: {Path(exe).name}")
     process = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     process.wait()
     return True
@@ -125,7 +149,7 @@ def serve(port: int) -> tuple[threading.Thread, uvicorn.Server, str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Cutter")
     parser.add_argument("--window-mode", default="auto",
-                        choices=["auto", "native", "app", "browser", "none"])
+                        choices=["auto", "window", "native", "app", "browser", "none"])
     parser.add_argument("--browser", action="store_true", help="то же, что --window-mode browser")
     parser.add_argument("--no-window", action="store_true", help="то же, что --window-mode none")
     parser.add_argument("--port", type=int, default=8765)
@@ -146,55 +170,47 @@ def main() -> None:
         sys.exit(1)
     print(f"Cutter: {url}")
 
-    if mode == "none":
+    def wait_server() -> None:
         try:
             while thread.is_alive():
                 time.sleep(0.5)
         except KeyboardInterrupt:
             pass
-        return
 
+    if mode == "none":
+        wait_server()
+        return
     if mode == "browser":
         webbrowser.open(url)
-        try:
-            while thread.is_alive():
-                time.sleep(0.5)
-        except KeyboardInterrupt:
-            pass
+        wait_server()
         return
-
+    if mode == "window":
+        if not run_native_window(url, args.width, args.height):
+            sys.exit("нативное окно Cutter.exe не найдено — собери его tools/build_window.ps1")
+        server.should_exit = True
+        return
     if mode == "native":
-        if not open_native_window(url, args.width, args.height):
-            print("нативное окно не поднялось — запусти с --window-mode app", file=sys.stderr)
-            sys.exit(1)
+        if not run_pywebview(url, args.width, args.height):
+            sys.exit("pywebview не поднялся")
         server.should_exit = True
         return
-
     if mode == "app":
-        if not open_app_window(url, args.width, args.height):
-            print("не нашёл Edge или Chrome", file=sys.stderr)
-            webbrowser.open(url)
-            try:
-                while thread.is_alive():
-                    time.sleep(0.5)
-            except KeyboardInterrupt:
-                pass
+        run_app_window(url, args.width, args.height)
         server.should_exit = True
         return
 
-    # auto: нативное окно, иначе окно-приложение, иначе вкладка
-    if open_native_window(url, args.width, args.height):
+    # auto: нативное окно → pywebview → окно Edge → вкладка
+    if run_native_window(url, args.width, args.height):
         server.should_exit = True
         return
-    if open_app_window(url, args.width, args.height):
+    if run_pywebview(url, args.width, args.height):
+        server.should_exit = True
+        return
+    if run_app_window(url, args.width, args.height):
         server.should_exit = True
         return
     webbrowser.open(url)
-    try:
-        while thread.is_alive():
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        pass
+    wait_server()
 
 
 if __name__ == "__main__":

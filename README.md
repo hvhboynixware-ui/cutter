@@ -39,7 +39,22 @@
 
 ---
 
-## Быстрый старт (Windows)
+## Установка
+
+### Готовый инсталлер (для пользователей)
+
+1. Скачай `Cutter-1.0.0-x64.msi` из [Releases](../../releases) и запусти.
+2. Ярлык появится в меню Пуск и на рабочем столе.
+3. Первый запуск: скачай модель распознавания в Настройках и вставь ключ LLM — приложение подскажет.
+
+Ставится и удаляется штатно через «Программы и компоненты». ffmpeg уже внутри, ничего докачивать не нужно.
+
+### Портативная версия
+
+Распакуй `Cutter-1.0.0-windows-x64.zip` в любую папку и запусти `Cutter.exe`.
+Данные (настройки, модели, клипы) хранятся в `%LOCALAPPDATA%\Cutter`.
+
+### Из исходников
 
 Нужны **Python 3.11+** и **ffmpeg** в `PATH` (проверка: `ffmpeg -version`).
 
@@ -50,17 +65,44 @@ run.bat
 ```
 
 `run.bat` сам создаст `.venv`, поставит зависимости и откроет окно.
+Для разработки окно собирается отдельно: `tools\build_window.ps1` (C# компилируется `csc.exe` из Windows, ничего ставить не надо).
 
 Режимы окна, если что-то не поднимается:
 
 ```powershell
-.\.venv\Scripts\python -m app.main --window-mode app     # окно Edge/Chrome без адресной строки
+.\.venv\Scripts\python -m app.main                     # авто: нативное окно Cutter.exe
+.\.venv\Scripts\python -m app.main --window-mode app    # окно Edge/Chrome без адресной строки
 .\.venv\Scripts\python -m app.main --window-mode browser # обычная вкладка
 .\.venv\Scripts\python -m app.main --window-mode none    # только сервер, для отладки UI
 ```
 
-По умолчанию `auto`: пробует нативное окно (pywebview), если .NET-окружение не даёт —
-открывает окно Edge/Chrome в режиме приложения. Второй путь работает всегда: Edge есть в Windows.
+### Собрать приложение самому
+
+```powershell
+tools\build_app.ps1      # -> dist\Cutter\ (окно + бэкенд + ffmpeg), ~700 МБ
+installer\build.ps1      # -> dist\Cutter-1.0.0-x64.msi
+```
+
+Нужен `pip install pyinstaller` в venv. MSI собирается WiX v3 (portable, кладётся в `tools\wix`),
+права администратора для сборки и установки не требуются: установка per-user.
+
+---
+
+## Как устроено окно
+
+```
+Cutter.exe  (C#, 37 КБ)          cutter_backend.exe  (Python, PyInstaller)
+  ├─ запускает бэкенд               ├─ FastAPI на 127.0.0.1:8765
+  ├─ ждёт /api/health               ├─ пайплайн: ffmpeg + whisper + LLM
+  ├─ открывает WebView2-окно        └─ Playwright для загрузки на площадки
+  └─ гасит бэкенд при закрытии
+```
+
+Почему так: WebView2 уже есть в Windows 10/11, поэтому окно нативное и весит копейки.
+`.NET Framework 4.8` + `csc.exe` тоже есть в системе — сборка окна не требует SDK.
+Если WebView2-рантайма вдруг нет, `Cutter.exe` покажет ссылку на установку.
+
+---
 
 Можно и вручную:
 

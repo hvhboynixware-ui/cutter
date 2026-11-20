@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "llm": {
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "api_key": "",
+    "fallback": true,
+    "keys": {
+      "openrouter": "",
+      "gemini": "",
+      "groq": ""
+    }
+  },
+  "stt": {
+    "whisper_size": "base",
+    "language": "ru"
+  },
+  "render": {
+    "clips": 5,
+    "min_dur": 18,
+    "max_dur": 60,
+    "style": "classic",
+    "crf": 20,
+    "fps": 30
+  },
+  "upload": {
+    "engine": "plain",
+    "profile_id": "",
+    "platforms": [
+      "tiktok"
+    ],
+    "dry_run": true,
+    "visibility": "public",
+    "antidetect_token": ""
+  },
+  "paths": {
+    "outdir": ""
+  }
+}

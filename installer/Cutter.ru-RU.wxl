@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Локализация MSI под русскую кодовую страницу.
+  Нужна только чтобы light.exe взял для базы данных code page 1251 (Cyrillic),
+  иначе кириллица в Product/ARP-строках не проходит валидацию (LGHT0311),
+  а пути установки с кириллицей в имени пользователя не установятся.
+-->
+<WixLocalization xmlns="http://schemas.microsoft.com/wix/2006/localization"
+                 Culture="ru-RU"
+                 Codepage="1251" />

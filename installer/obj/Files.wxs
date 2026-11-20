@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <DirectoryRef Id="INSTALLFOLDER">
+            <Directory Id="dirB262A3C1EC64B1E8AB54055F45CD67B0" Name="_internal" />
+        </DirectoryRef>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="ProductComponents">
+            <Component Id="cmp214E352C29249824DA9DAA781F404CA9" Directory="INSTALLFOLDER" Guid="37980FD3-3BCF-43B6-8EDA-5ED488801F0E">
+                <File Id="fil154E537D321AD21292005EA7003DD823" KeyPath="yes" Source="$(var.SourceDir)\Cutter.exe" />
+            </Component>
+            <Component Id="cmp98A732240721FB3D0D3F10626AAA3D2A" Directory="INSTALLFOLDER" Guid="51A455B1-D70E-4F85-A356-427A003959E7">
+                <File Id="fil21EA3CE47A1F2C8C727A5D242C72940E" KeyPath="yes" Source="$(var.SourceDir)\python313.dll" />
+            </Component>
+            <Component Id="cmp455AF36B357B399EF607E485351A1596" Directory="dirB262A3C1EC64B1E8AB54055F45CD67B0" Guid="DC2151B6-9921-4077-BDFA-528D775446E9">
+                <File Id="fil5460930107EB30771D16D7017FC3ABA4" KeyPath="yes" Source="$(var.SourceDir)\_internal\base_library.zip" />
+            </Component>
+        </ComponentGroup>
+    </Fragment>
+</Wix>

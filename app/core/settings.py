@@ -9,15 +9,57 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sys
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-APP_DIR = Path(__file__).resolve().parent.parent   # Cutter/app
-ROOT = APP_DIR.parent                               # Cutter
-DATA_DIR = APP_DIR / "data"
+FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def _pick_user_dir() -> Path:
+    """Куда писать настройки/модели. Перебираем варианты: на некоторых машинах
+    LOCALAPPDATA может быть закрыт политикой, тогда падаем в APPDATA / домашнюю папку."""
+    override = os.environ.get("CUTTER_DATA_DIR", "").strip()
+    candidates: list[Path] = []
+    if override:
+        candidates.append(Path(override).expanduser())
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        candidates.append(Path(local) / "Cutter")
+    roaming = os.environ.get("APPDATA")
+    if roaming:
+        candidates.append(Path(roaming) / "Cutter")
+    candidates.append(Path.home() / "Cutter")
+    candidates.append(Path(tempfile.gettempdir()) / "Cutter")
+
+    for candidate in candidates:
+        try:
+            (candidate / "data").mkdir(parents=True, exist_ok=True)
+            probe = candidate / "data" / ".write-check"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            return candidate
+        except Exception:
+            continue
+    return candidates[-1]
+
+
+if FROZEN:
+    # Собранное приложение: ресурсы внутри сборки, данные — в профиле пользователя
+    ROOT = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    APP_DIR = ROOT / "app"
+    _user_root = _pick_user_dir()
+    DATA_DIR = _user_root / "data"
+    MODELS_DIR = _user_root / "models"
+else:
+    APP_DIR = Path(__file__).resolve().parent.parent   # Cutter/app
+    ROOT = APP_DIR.parent                               # Cutter
+    DATA_DIR = APP_DIR / "data"
+    MODELS_DIR = ROOT / "models"
+
 SETTINGS_PATH = DATA_DIR / "settings.json"
-MODELS_DIR = ROOT / "models"
 
 DEFAULTS: dict[str, Any] = {
     "version": 1,
@@ -154,11 +196,22 @@ def outdir(settings: dict) -> Path:
     return path
 
 
+def _bundled(name: str) -> Path:
+    return ROOT / name
+
+
 def ffmpeg_path() -> str:
+    """ffmpeg: сначала рядом с приложением (в собранной версии он в комплекте), потом PATH."""
+    for candidate in (_bundled("ffmpeg.exe"), _bundled("bin") / "ffmpeg.exe"):
+        if candidate.is_file():
+            return str(candidate)
     return shutil.which("ffmpeg") or "ffmpeg"
 
 
 def ffprobe_path() -> str:
+    for candidate in (_bundled("ffprobe.exe"), _bundled("bin") / "ffprobe.exe"):
+        if candidate.is_file():
+            return str(candidate)
     return shutil.which("ffprobe") or "ffprobe"
 
 

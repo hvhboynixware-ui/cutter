@@ -12,10 +12,16 @@ models/
 .test-assets/
 *.log
 
-# Сборка/ОС
+# Сборка приложения
 build/
 dist/
-*.spec
+.build/
+
+# pytest
+.pytest_cache/
+pytest-of-*/
+
+# ОС
 .DS_Store
 Thumbs.db
 desktop.ini
@@ -24,7 +30,3 @@ desktop.ini
 .idea/
 .vscode/
 *.swp
-
-# pytest
-.pytest_cache/
-pytest-of-*/

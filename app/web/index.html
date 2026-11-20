@@ -71,6 +71,25 @@
 
       <!-- ===================== НАРЕЗКА ===================== -->
       <section class="screen is-active" data-screen="cut">
+        <div class="setup" id="setup" hidden>
+          <div class="setup__item" data-setup="model">
+            <span class="setup__num">1</span>
+            <div class="setup__text">
+              <strong>Скачай модель распознавания</strong>
+              <span>Без неё приложение не слышит видео. Хватит <code>small</code>, лучше <code>medium</code>.</span>
+            </div>
+            <button class="btn btn--soft btn--tiny" data-goto="settings">В настройки</button>
+          </div>
+          <div class="setup__item" data-setup="key">
+            <span class="setup__num">2</span>
+            <div class="setup__text">
+              <strong>Вставь ключ LLM</strong>
+              <span>DeepSeek — примерно 4 доллара на 1000 часов видео. Есть бесплатные альтернативы.</span>
+            </div>
+            <button class="btn btn--soft btn--tiny" data-goto="settings">В настройки</button>
+          </div>
+        </div>
+
         <div class="layout-cut">
 
           <div class="col-main">

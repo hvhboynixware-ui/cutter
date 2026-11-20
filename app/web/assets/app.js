@@ -1,4 +1,4 @@
-﻿/* Cutter — клиентская логика. Без фреймворков: маленькое приложение, зато быстрое. */
+/* Cutter — клиентская логика. Без фреймворков: маленькое приложение, зато быстрое. */
 'use strict';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -217,6 +217,21 @@ function renderChips(health) {
     el.chips.browser.textContent = current.browser ? 'браузер есть' : 'нужен Chrome/Edge';
     el.chips.browser.className = `chip ${current.browser ? 'is-ok' : 'is-bad'}`;
   }
+
+  renderSetup();
+}
+
+/** Подсказки первого запуска: модель и ключ. */
+function renderSetup() {
+  const setup = document.querySelector('#setup');
+  if (!setup) return;
+  const hasModel = Boolean(state.health && state.health.models && state.health.models.length);
+  const hasKey = Boolean(state.settings && state.settings.llm && state.settings.llm.api_key);
+  const modelItem = setup.querySelector('[data-setup="model"]');
+  const keyItem = setup.querySelector('[data-setup="key"]');
+  if (modelItem) modelItem.hidden = hasModel;
+  if (keyItem) keyItem.hidden = hasKey;
+  setup.hidden = hasModel && hasKey;
 }
 
 /* ---------------------------------------------------------------- превью клипов */
@@ -324,6 +339,10 @@ el.modal.addEventListener('click', (event) => {
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !el.modal.hidden) closeModal();
+  if (event.ctrlKey && event.key === 'Enter' && state.screen === 'cut' && !el.runBtn.disabled) {
+    event.preventDefault();
+    el.runBtn.click();
+  }
 });
 
 /* ---------------------------------------------------------------- параметры */
@@ -845,6 +864,10 @@ async function refreshModels() {
   try {
     const data = await api('/api/models');
     const installed = new Set((data.installed || []).map((item) => item.size));
+    if (state.health) {
+      state.health.models = data.installed || [];
+    }
+    renderSetup();
     el.models.innerHTML = (data.sizes || []).map((size) => {
       const isInstalled = installed.has(size.id);
       return `<div class="model-row">

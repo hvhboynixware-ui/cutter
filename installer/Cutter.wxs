@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Cutter.wxs — WiX v3 source для MSI-инсталлятора Cutter (Windows x64).
+
+  Сборка: installer\build.ps1 (-Version 1.0.0).
+  Требования: WiX v3.11 в tools\wix, список файлов из dist\Cutter\ генерируется
+  heat.exe в installer\obj\Files.wxs (ComponentGroup Id="ProductComponents").
+
+  Схема установки:
+    * per-machine: [ProgramFiles64Folder]\Cutter
+    * per-user (нет прав администратора): %LOCALAPPDATA%\Programs\Cutter
+    Переключение делает SetProperty-кастомное действие до CostFinalize,
+    поэтому один и тот же пакет ставится и с админом, и без.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?ifndef Version ?>
+  <?define Version = "1.0.0" ?>
+  <?endif?>
+
+  <Product Id="*"
+           Name="Cutter"
+           Language="1049"
+           Codepage="65001"
+           Version="$(var.Version)"
+           Manufacturer="Cutter"
+           UpgradeCode="{B7E4A3C1-9D2F-4E8B-A6C5-3F1D2E4B8A97}">
+
+    <!-- InstallPrivileges="limited": пакет не требует elevation всегда.
+         ALLUSERS=2 — dual-purpose: per-machine при правах, per-user без них. -->
+    <Package InstallerVersion="500"
+             Compressed="yes"
+             InstallPrivileges="limited"
+             Description="Cutter — AI-нарезка вертикальных клипов из длинных видео"
+             Comments="Cutter version $(var.Version) x64" />
+
+    <Property Id="ALLUSERS" Value="2" />
+
+    <!-- Программы и компоненты -->
+    <Property Id="ARPPRODUCTICON" Value="CutterIcon" />
+    <Property Id="ARPCOMMENTS" Value="AI-нарезка вертикальных клипов из длинных видео" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/" />
+    <Icon Id="CutterIcon" SourceFile="icon.ico" />
+
+    <!-- Переустановка поверх (в т.ч. той же версии) удаляет старый продукт -->
+    <MajorUpgrade DowngradeErrorMessage="Более новая версия Cutter уже установлена."
+                  AllowSameVersionUpgrades="yes" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <!-- Целевая папка per-machine -->
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="Cutter" />
+      </Directory>
+      <!-- Стандартные папки, нужные для per-user fallback и ярлыков -->
+      <Directory Id="LocalAppDataFolder" />
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppMenuFolder" Name="Cutter" />
+      </Directory>
+      <Directory Id="DesktopFolder" />
+    </Directory>
+
+    <!-- Файлы из dist\Cutter (heat.exe) -->
+    <DirectoryRef Id="INSTALLFOLDER">
+      <!-- Ярлыки. Ключевой путь — HKMU: HKLM для per-machine, HKCU для per-user. -->
+      <Component Id="AppShortcuts"
+                 Guid="{4F6C1A2B-8D9E-4B3C-9F5A-1E2D3C4B5A69}">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="Cutter"
+                  Description="Cutter — AI-нарезка клипов"
+                  Directory="AppMenuFolder"
+                  Target="[INSTALLFOLDER]Cutter.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="CutterIcon" />
+        <Shortcut Id="DesktopShortcut"
+                  Name="Cutter"
+                  Description="Cutter — AI-нарезка клипов"
+                  Directory="DesktopFolder"
+                  Target="[INSTALLFOLDER]Cutter.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="CutterIcon" />
+        <RegistryKey Root="HKMU" Key="Software\Cutter">
+          <RegistryValue Name="InstallPath" Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+        </RegistryKey>
+        <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
+        <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="ProductFeature" Title="Cutter" Level="1"
+             Display="expand" InstallDefault="local" Absent="disallow">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="AppShortcuts" />
+    </Feature>
+
+    <!-- Per-user fallback: если MSI выбирает per-user контекст (или явно передан
+         MSIINSTALLPERUSER=1), ставим в %LOCALAPPDATA%\Programs\Cutter.
+         NOT Privileged — страховка для неадминского запуска. -->
+    <CustomAction Id="SetPerUserInstallFolder"
+                  Property="INSTALLFOLDER"
+                  Value="[LocalAppDataFolder]Programs\Cutter" />
+    <InstallExecuteSequence>
+      <Custom Action="SetPerUserInstallFolder" Before="CostFinalize">MSIINSTALLPERUSER="1" OR NOT Privileged</Custom>
+    </InstallExecuteSequence>
+    <InstallUISequence>
+      <Custom Action="SetPerUserInstallFolder" Before="CostFinalize">MSIINSTALLPERUSER="1" OR NOT Privileged</Custom>
+    </InstallUISequence>
+
+    <!-- Минимальный UI (приветствие / лицензия / прогресс / финиш) -->
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+  </Product>
+</Wix>

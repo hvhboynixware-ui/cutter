@@ -1,4 +1,4 @@
-# Запуск Cutter из исходников. Первый запуск создаст venv и поставит зависимости.
+# Cutter launcher (PowerShell). ASCII only: Windows PowerShell 5.1 reads non-BOM scripts as ANSI.
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
@@ -9,12 +9,12 @@ New-Item -ItemType Directory -Force -Path $env:TMP, $env:PIP_CACHE_DIR | Out-Nul
 
 $python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $python)) {
-    Write-Host "[Cutter] создаю venv..." -ForegroundColor Yellow
+    Write-Host "[Cutter] creating venv..." -ForegroundColor Yellow
     python -m venv .venv
-    if ($LASTEXITCODE -ne 0) { throw "не получилось создать venv — поставь Python 3.11+" }
+    if ($LASTEXITCODE -ne 0) { throw "venv creation failed - install Python 3.11+" }
     & $python -m pip install --disable-pip-version-check -q -r requirements.txt
-    if ($LASTEXITCODE -ne 0) { throw "не получилось поставить зависимости" }
+    if ($LASTEXITCODE -ne 0) { throw "dependency install failed" }
 }
 
-Write-Host "[Cutter] запускаю..." -ForegroundColor Green
+Write-Host "[Cutter] starting..." -ForegroundColor Green
 & $python -m app.main @args
