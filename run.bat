@@ -4,6 +4,8 @@ cd /d "%~dp0"
 set "PIP_CACHE_DIR=%~dp0.pip-cache"
 set "TMP=%~dp0.tmp"
 set "TEMP=%~dp0.tmp"
+if not exist "%~dp0.tmp" mkdir "%~dp0.tmp"
+if not exist "%~dp0.pip-cache" mkdir "%~dp0.pip-cache"
 
 if not exist ".venv\Scripts\python.exe" (
     echo [Cutter] создаю venv...

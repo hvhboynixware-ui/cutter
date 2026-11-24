@@ -286,7 +286,10 @@ class _OAuthCallbackServer:
                 self.wfile.write(body)
                 parent.done.set()
 
-        self._server = http.server.HTTPServer(("127.0.0.1", self.port), Handler)
+        class _ReuseHTTPServer(http.server.HTTPServer):
+            allow_reuse_address = True
+
+        self._server = _ReuseHTTPServer(("127.0.0.1", self.port), Handler)
         self._server.timeout = 0.5
         threading.Thread(target=self._serve, daemon=True).start()
         return self
@@ -307,6 +310,16 @@ class _OAuthCallbackServer:
                 pass
             self._server = None
         return False
+
+
+def _network_proxies() -> tuple[str, dict | None]:
+    try:
+        proxy = str((S.load().get("network") or {}).get("proxy") or "").strip()
+    except Exception:
+        proxy = ""
+    if not proxy:
+        return "", None
+    return proxy, {"http": proxy, "https": proxy}
 
 
 def start_oauth_login(
@@ -339,6 +352,7 @@ def start_oauth_login(
     auth_url = f"{OPENAI_AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     log("ChatGPT OAuth: открываю окно входа")
+    log(f"ссылка авторизации: {auth_url}")
     try:
         server_ctx = _OAuthCallbackServer(state)
     except OSError as exc:
@@ -360,6 +374,7 @@ def start_oauth_login(
         code = cb.code
 
     log("ChatGPT OAuth: обмениваю code на токен")
+    _, proxies = _network_proxies()
     try:
         resp = requests.post(
             OPENAI_TOKEN_URL,
@@ -371,6 +386,7 @@ def start_oauth_login(
                 "code_verifier": verifier,
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
+            proxies=proxies,
             timeout=30.0,
         )
     except requests.RequestException as exc:
@@ -545,9 +561,10 @@ def start_browser_login(
     slug = (existing or {}).get("profile_dir") or f"{prov}_{acc_id}"
     url = CHATGPT_WEB_URL if prov == "chatgpt" else GEMINI_WEB_URL
 
+    proxy_str, _ = _network_proxies()
     log(f"{prov}: открываю браузер для входа ({slug})")
     session = browsers.open_session(
-        BrowserTarget(engine="plain", profile_id=slug, headless=False),
+        BrowserTarget(engine="plain", profile_id=slug, headless=False, proxy=proxy_str),
         persistent_root=_profiles_dir(),
         log=log,
     )
@@ -562,6 +579,13 @@ def start_browser_login(
         while time.time() < deadline:
             if cancel and cancel():
                 raise AccountError("вход отменён")
+            try:
+                if session.page.is_closed():
+                    raise AccountError("окно браузера закрыто до завершения входа")
+            except AccountError:
+                raise
+            except Exception:
+                raise AccountError("окно браузера закрыто")
             if prov == "chatgpt":
                 logged_in, email, plan = _detect_chatgpt_session(session)
             else:

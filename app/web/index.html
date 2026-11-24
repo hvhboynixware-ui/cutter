@@ -1,716 +1,711 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cutter — нарезка в шортсы</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0e'/%3E%3Cpath d='M11 8h4v16h-4zM19 8h3v16h-3z' fill='%23f5a524'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/assets/fonts.css">
-<link rel="stylesheet" href="/assets/app.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cutter Studio — нарезка, озвучка и публикация</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%2322d3ee'/><path d='M7 5v14M12 8v8M17 5v14' stroke='%23041016' stroke-width='2.4' stroke-linecap='round'/></svg>">
+  <link rel="stylesheet" href="/assets/fonts.css">
+  <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
+<div class="app-shell">
 
-<svg class="icon-sprite" aria-hidden="true" focusable="false">
-  <symbol id="i-cut" viewBox="0 0 24 24"><path d="M4 4v16M9 4v16M14 4v16M19 4v16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
-  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
-  <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
-  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 3.5v2M12 18.5v2M20.5 12h-2M5.5 12h-2M17.9 6.1l-1.4 1.4M7.5 16.5l-1.4 1.4M17.9 17.9l-1.4-1.4M7.5 7.5L6.1 6.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
-  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
-  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
-  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h5l-1 7 8-11h-5l1-7z" fill="currentColor"/></symbol>
-  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7L11 6.3M14 11a4 4 0 0 0-5.7 0L6 13.3a4 4 0 0 0 5.7 5.7l1.3-1.3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
-  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-ad" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M7 15l2.5-6L12 15M8 13.2h3M14.5 9v6h2a2.5 2.5 0 0 0 0-5h-2z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M5 19.5c1.5-3.5 4.2-5 7-5s5.5 1.5 7 5" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
-  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2 2 0 0 0-2.8-2.8L5.2 17.2 4 20z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
-</svg>
-
-<div class="app">
-
-  <aside class="rail" aria-label="Разделы">
-    <div class="rail__logo" aria-hidden="true">
-      <span class="rail__mark"></span>
-      <span class="rail__word">cut</span>
+  <!-- ============================= TOP COMMAND BAR ============================= -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M5 4v16"/><path d="M12 7v10"/><path d="M19 4v16"/>
+        </svg>
+      </div>
+      <div class="brand-meta">
+        <div class="brand-title">CUTTER <span class="brand-tag">STUDIO</span></div>
+        <div class="brand-ver" id="brand-ver">v1.1.0</div>
+      </div>
     </div>
 
-    <nav class="rail__nav">
-      <button class="rail__btn is-active" data-nav="cut" aria-current="page" title="Нарезка">
-        <svg class="ico"><use href="#i-cut"/></svg><span>Нарезка</span>
+    <nav class="topnav" role="tablist" aria-label="Разделы">
+      <button class="nav-pill is-active" data-tab="studio" role="tab">
+        <span class="nav-dot"></span>Студия
       </button>
-      <button class="rail__btn" data-nav="upload" title="Загрузка">
-        <svg class="ico"><use href="#i-upload"/></svg><span>Загрузка</span>
+      <button class="nav-pill" data-tab="upload" role="tab">
+        Публикация <span class="nav-count" id="nav-upload-count" hidden>0</span>
       </button>
-      <button class="rail__btn" data-nav="history" title="История">
-        <svg class="ico"><use href="#i-history"/></svg><span>История</span>
+      <button class="nav-pill" data-tab="history" role="tab">
+        История
       </button>
-      <button class="rail__btn" data-nav="settings" title="Настройки">
-        <svg class="ico"><use href="#i-settings"/></svg><span>Настройки</span>
+      <button class="nav-pill" data-tab="settings" role="tab">
+        Настройки
       </button>
     </nav>
 
-    <div class="rail__status" id="rail-status" title="Состояние">
-      <span class="dot" id="status-dot"></span>
-      <span class="rail__status-text" id="status-text">…</span>
+    <div class="topbar-right">
+      <button class="global-job-pill" id="global-job-pill" hidden title="Открыть активную задачу">
+        <span class="pulse-dot"></span>
+        <span id="global-job-text">В работе…</span>
+        <strong id="global-job-pct">0%</strong>
+      </button>
+      <div class="telemetry-bar" id="telemetry-bar">
+        <span class="tel-chip" id="tel-llm" title="Активный ИИ / аккаунт">ИИ: —</span>
+        <span class="tel-chip" id="tel-whisper" title="Модель Whisper">Речь: —</span>
+        <span class="tel-chip" id="tel-encoder" title="Видеоэнкодер">Рендер: —</span>
+        <span class="tel-chip" id="tel-browser" title="Браузер для входа и публикаций">Браузер: —</span>
+      </div>
     </div>
-  </aside>
+  </header>
 
-  <main class="stage">
+  <!-- ============================= MAIN VIEWPORT ============================= -->
+  <main class="workspace">
 
-    <header class="topbar">
-      <div>
-        <h1 class="topbar__title" id="screen-title">Нарезка</h1>
-        <p class="topbar__sub" id="screen-sub">Длинное видео → вертикальные клипы с субтитрами</p>
-      </div>
-      <div class="topbar__chips" id="chips">
-        <span class="chip chip--ghost" id="chip-model">модель: …</span>
-        <button class="chip chip--btn" id="chip-key" data-goto="settings" title="Настроить аккаунт или API-ключ">вход: …</button>
-        <span class="chip chip--ghost" id="chip-encoder">рендер: …</span>
-        <span class="chip chip--ghost" id="chip-browser">браузер: …</span>
-      </div>
-    </header>
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~ TAB: STUDIO ~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <section class="tab-view is-active" id="tab-studio">
+      <div class="cockpit-grid">
 
-    <div class="screens" id="screens">
-
-      <!-- ===================== НАРЕЗКА ===================== -->
-      <section class="screen is-active" data-screen="cut">
-        <div class="setup" id="setup" hidden>
-          <div class="setup__item" data-setup="model">
-            <span class="setup__num">1</span>
-            <div class="setup__text">
-              <strong>Скачай модель распознавания</strong>
-              <span>Без неё приложение не слышит видео. Хватит <code>small</code>, лучше <code>medium</code>.</span>
-            </div>
-            <button class="btn btn--soft btn--tiny" data-goto="settings">В настройки</button>
+        <!-- COL 1: SOURCE + MODE + TIMING -->
+        <aside class="panel col-source">
+          <div class="panel-head">
+            <h2>Источник и сценарий</h2>
+            <span class="hint-tag">Шаг 1</span>
           </div>
-          <div class="setup__item" data-setup="key">
-            <span class="setup__num">2</span>
-            <div class="setup__text">
-              <strong>Войди в Google / ChatGPT или вставь API-ключ</strong>
-              <span>Можно войти в аккаунт с подпиской без API-ключа — или использовать режим «На части» без ИИ.</span>
-            </div>
-            <button class="btn btn--soft btn--tiny" data-goto="settings">В настройки</button>
+
+          <div class="source-tabs" role="group" aria-label="Выбор источника">
+            <button class="seg-btn is-active" data-src-mode="file">Локальный файл</button>
+            <button class="seg-btn" data-src-mode="youtube">YouTube ссылка</button>
           </div>
-        </div>
 
-        <div class="layout-cut">
-
-          <div class="col-main">
-            <div class="card card--source" id="source-card">
-              <div class="drop" id="dropzone" tabindex="0" role="button" aria-label="Выбрать видео или перетащить файл">
-                <input type="file" id="file-input" accept="video/*,audio/*" hidden>
-                <svg class="drop__ico ico"><use href="#i-download"/></svg>
-                <p class="drop__title">Перетащи видео или нажми</p>
-                <p class="drop__hint">mp4, mov, mkv, mp3 · подойдёт подкаст, стрим, лекция, дорама</p>
+          <div id="src-file-pane">
+            <div class="dropzone" id="dropzone" tabindex="0">
+              <input type="file" id="file-input" accept="video/*,.mkv,.mov,.webm,.avi" hidden>
+              <div class="drop-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M12 16V4m0 0l-4 4m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                </svg>
               </div>
-
-              <div class="or"><span>или</span></div>
-
-              <div class="url-row">
-                <svg class="ico url-row__ico"><use href="#i-link"/></svg>
-                <input class="input" id="yt-url" type="text" inputmode="url" spellcheck="false"
-                       placeholder="YouTube · Rutube · VK видео — вставь ссылку">
-                <button class="btn btn--soft" id="yt-btn">Скачать и нарезать</button>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card__head">
-                <h2 class="card__title">Параметры</h2>
-                <span class="card__note" id="estimate">—</span>
-              </div>
-
-              <div class="param">
-                <label class="param__label">Режим нарезки</label>
-                <div class="segmented" id="mode-seg" role="group" aria-label="Режим нарезки">
-                  <button data-mode="moments" class="is-active">Моменты (ИИ)</button>
-                  <button data-mode="parts">На части</button>
-                  <button data-mode="brainrot">Китайская дорама (озвучка)</button>
-                </div>
-                <p class="hint" id="mode-hint">ИИ выберет самые цепляющие моменты с хуком в начале.</p>
-              </div>
-
-              <div class="brainrot-box" id="brainrot-panel" hidden>
-                <div class="brainrot-box__head">
-                  <strong>Китайская дорама / Брейнрот-пересказ</strong>
-                  <span>полная переозвучка по хронометражу + музыка</span>
-                </div>
-                <div class="field">
-                  <label class="field__label" for="voice-select">Голос озвучки</label>
-                  <select class="input" id="voice-select"></select>
-                </div>
-                <div class="field">
-                  <label class="field__label">Громкость оригинала на фоне</label>
-                  <div class="vol">
-                    <input type="range" id="orig-vol" min="0" max="40" step="1" value="8" aria-label="Громкость оригинала">
-                    <span class="vol__value" id="orig-vol-label">8%</span>
-                  </div>
-                </div>
-                <label class="switch">
-                  <input type="checkbox" id="brainrot-rewrite" checked>
-                  <span class="switch__track"><span class="switch__thumb"></span></span>
-                  <span class="switch__label">Перевести и переписать текст в стиль пересказа дорамы (ИИ)</span>
-                </label>
-                <div class="drama-music-pills" id="drama-music-pills">
-                  <span class="hint">Каноничный фон:</span>
-                  <button type="button" class="btn btn--ghost btn--tiny" data-pick-music="drama-guzheng">Грустная дорама</button>
-                  <button type="button" class="btn btn--ghost btn--tiny" data-pick-music="brainrot-twist">Интрига-бит</button>
-                  <button type="button" class="btn btn--ghost btn--tiny" data-pick-music="imperial-destiny">Саспенс</button>
-                </div>
-              </div>
-
-              <div class="param">
-                <label class="param__label">Сколько клипов</label>
-                <div class="row row--wrap">
-                  <div class="segmented" id="clips-seg" role="group" aria-label="Сколько клипов">
-                    <button data-clips="3">3</button>
-                    <button data-clips="5" class="is-active">5</button>
-                    <button data-clips="7">7</button>
-                    <button data-clips="10">10</button>
-                    <button data-clips="15">15</button>
-                    <button data-clips="20">20</button>
-                    <button data-clips="0" id="clips-all-btn" hidden>Все части</button>
-                  </div>
-                  <input class="input input--num" id="clips-custom" type="number" min="1" max="100" placeholder="своё" title="Своё количество клипов">
-                </div>
-              </div>
-
-              <div class="param">
-                <label class="param__label">Длина клипа</label>
-                <div class="segmented" id="dur-seg" role="group" aria-label="Длина клипа">
-                  <button data-dur="10,20">15 с</button>
-                  <button data-dur="20,40">30 с</button>
-                  <button data-dur="35,55">45 с</button>
-                  <button data-dur="18,60" class="is-active">18–60 с</button>
-                  <button data-dur="75,105">90 с</button>
-                  <button data-dur="100,140">2 мин</button>
-                  <button data-dur="160,200">3 мин</button>
-                </div>
-                <div class="dur-custom">
-                  <label>От <input class="input input--num" id="dur-min" type="number" min="4" max="600" value="18"> с</label>
-                  <label>До <input class="input input--num" id="dur-max" type="number" min="5" max="600" value="60"> с</label>
-                </div>
-              </div>
-
-              <div class="param">
-                <div class="param__row">
-                  <label class="param__label">Субтитры и кадр</label>
-                  <label class="switch switch--compact">
-                    <input type="checkbox" id="subtitles-toggle" checked>
-                    <span class="switch__track"><span class="switch__thumb"></span></span>
-                    <span class="switch__label">Субтитры</span>
-                  </label>
-                </div>
-                <div class="styles styles--5" id="style-seg" role="group" aria-label="Стиль субтитров">
-                  <button data-style="classic" class="style is-active">
-                    <span class="style__sample style__sample--classic">АБВ</span><span>Классика</span>
-                  </button>
-                  <button data-style="bold" class="style">
-                    <span class="style__sample style__sample--bold">АБВ</span><span>Жирный</span>
-                  </button>
-                  <button data-style="clean" class="style">
-                    <span class="style__sample style__sample--clean">Абв</span><span>Чистый</span>
-                  </button>
-                  <button data-style="neon" class="style">
-                    <span class="style__sample style__sample--neon">АБВ</span><span>Неон</span>
-                  </button>
-                  <button data-style="drama" class="style">
-                    <span class="style__sample style__sample--drama">Абв</span><span>Дорама</span>
-                  </button>
-                </div>
-                <div class="segmented segmented--sm" id="framing-seg" role="group" aria-label="Формат кадра" style="margin-top:10px">
-                  <button data-framing="auto" class="is-active">Кадр: Авто</button>
-                  <button data-framing="blur">9:16 блюр</button>
-                  <button data-framing="crop">9:16 кроп</button>
-                  <button data-framing="black">9:16 поля</button>
-                  <button data-framing="original">Оригинал</button>
-                </div>
-              </div>
-
-              <div class="param">
-                <label class="param__label">Стиль кадра</label>
-                <div class="fx-row" id="fx-seg" role="group" aria-label="Стиль кадра"></div>
-              </div>
-
-              <div class="param">
-                <label class="param__label" for="music-select">Музыка</label>
-                <select class="input" id="music-select">
-                  <option value="none">Без музыки</option>
-                </select>
-                <div class="vol" id="vol-row" hidden>
-                  <input type="range" id="music-volume" min="5" max="60" step="1" value="18" aria-label="Громкость музыки">
-                  <span class="vol__value" id="vol-label">18%</span>
-                </div>
-                <p class="hint" id="music-hint">Треки сгенерированы для Cutter — claim'ов не будет.</p>
-              </div>
-
-              <div class="param">
-                <label class="param__label" for="integration-select">Рекламная интеграция</label>
-                <div class="row">
-                  <select class="input" id="integration-select">
-                    <option value="">Без интеграции</option>
-                  </select>
-                  <button class="btn btn--soft btn--tiny" id="open-ad-modal" type="button">
-                    <svg class="ico"><use href="#i-ad"/></svg><span>Залить интеграцию</span>
-                  </button>
-                </div>
-                <p class="hint">Вставка MP4 (преролл / после хука / конец) или баннер PNG/GIF поверх клипа.</p>
-              </div>
-
-              <div class="param">
-                <label class="param__label">Защита от повторов</label>
-                <div class="segmented" id="protect-seg" role="group" aria-label="Защита от повторов">
-                  <button data-protect="off" class="is-active">Выкл</button>
-                  <button data-protect="light">Лёгкая</button>
-                  <button data-protect="strong">Сильная</button>
-                </div>
-                <p class="hint">Флип, микро-зум, скорость и зерно — кадр перестаёт быть копией исходника.</p>
-              </div>
-
-              <button class="btn btn--primary btn--wide" id="run-btn">
-                <svg class="ico"><use href="#i-bolt"/></svg><span>Нарезать</span>
-              </button>
-              <p class="card__foot" id="run-hint">Выбери файл или вставь ссылку</p>
-
-              <div class="outdir">
-                <span class="outdir__label">Клипы сохраняются в</span>
-                <button class="outdir__path" id="outdir-link" title="Изменить папку в настройках">—</button>
-              </div>
+              <div class="drop-title" id="drop-title">Перетащите видео или нажмите</div>
+              <div class="drop-sub" id="drop-sub">MP4, MOV, MKV, WebM · до 4K</div>
+              <button class="ghost-xs" id="clear-file-btn" type="button" hidden>Убрать файл</button>
             </div>
           </div>
 
-          <div class="col-side">
-            <div class="card card--job" id="job-card">
-              <div class="card__head">
-                <h2 class="card__title">Процесс</h2>
-                <button class="btn btn--ghost btn--tiny" id="cancel-btn" hidden>Отменить</button>
-              </div>
-
-              <div class="job-empty" id="job-empty">
-                <span class="job-empty__mark"></span>
-                <p>Тут будет прогресс: распознавание, выбор моментов, рендер.</p>
-              </div>
-
-              <div class="job-run" id="job-run" hidden>
-                <div class="progress">
-                  <div class="progress__bar"><span id="progress-fill"></span></div>
-                  <div class="progress__meta">
-                    <strong id="progress-pct">0%</strong>
-                    <span id="progress-stage">старт</span>
-                  </div>
-                </div>
-                <ol class="steps" id="steps">
-                  <li data-step="scan">Скан исходника</li>
-                  <li data-step="stt">Распознавание речи</li>
-                  <li data-step="llm">Выбор моментов</li>
-                  <li data-step="render">Рендер клипов</li>
-                </ol>
-                <pre class="terminal" id="log" aria-live="polite"></pre>
-              </div>
+          <div id="src-yt-pane" hidden>
+            <label class="field-label" for="yt-url">Ссылка на YouTube видео или стрим</label>
+            <div class="input-row">
+              <input type="url" id="yt-url" placeholder="https://www.youtube.com/watch?v=...">
+              <button class="btn-soft" id="yt-paste-btn" type="button" title="Вставить из буфера">Вставить</button>
             </div>
-
-            <div class="card card--tips">
-              <div class="card__head">
-                <h2 class="card__title">Что залетает</h2>
-                <span class="card__note">4 правила</span>
-              </div>
-              <ol class="tips">
-                <li><strong>Первые две секунды.</strong> Начало — на фразе-ударе, а не на вступлении.</li>
-                <li><strong>Один клип — одна мысль.</strong> Два панча в ролике = два пролистывания.</li>
-                <li><strong>Субтитры решают.</strong> Большинство смотрит без звука.</li>
-                <li><strong>Объём.</strong> 20 клипов в неделю минимум, иначе формат не поймать.</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-
-        <section class="results" id="results" hidden>
-          <div class="results__head">
-            <div>
-              <h2 class="results__title">Готовые клипы <span class="count" id="clips-count">0</span></h2>
-              <p class="results__sub" id="results-sub">—</p>
-            </div>
-            <div class="results__actions">
-              <button class="btn btn--soft" id="apply-ad-results" type="button">
-                <svg class="ico"><use href="#i-ad"/></svg><span>Вставить интеграцию</span>
-              </button>
-              <button class="btn btn--soft" id="upload-all-results" type="button">
-                <svg class="ico"><use href="#i-upload"/></svg><span>Грузить все</span>
-              </button>
-              <button class="btn btn--soft" id="open-folder">
-                <svg class="ico"><use href="#i-folder"/></svg><span>Открыть папку</span>
-              </button>
-            </div>
+            <div class="field-help">Скачивается в 1080p с авто-обходом 403/IPv6 и cookies Google-профиля.</div>
           </div>
 
-          <div class="strip" id="strip" aria-hidden="true">
-            <div class="strip__track"><div class="strip__fill"></div></div>
-            <div class="strip__marks" id="strip-marks"></div>
-            <div class="strip__labels"><span>0:00</span><span id="strip-end">0:00</span></div>
+          <div class="divider"></div>
+
+          <div class="block-label-row">
+            <span class="field-label">Быстрый пресет</span>
+            <span class="muted-xs">1 клик</span>
+          </div>
+          <div class="preset-row">
+            <button class="preset-chip" data-preset="moments" type="button">🔥 Моменты</button>
+            <button class="preset-chip" data-preset="parts" type="button">🎬 По частям</button>
+            <button class="preset-chip" data-preset="brainrot" type="button">🐉 Китайская дорама</button>
           </div>
 
-          <div class="stats" id="stats">
-            <div class="stat"><strong id="stat-count">0</strong><span>клипов</span></div>
-            <div class="stat"><strong id="stat-duration">0:00</strong><span>всего секунд</span></div>
-            <div class="stat"><strong id="stat-score">0%</strong><span>средний скор</span></div>
-            <div class="stat"><strong id="stat-wpm">0</strong><span>слов в минуту</span></div>
-          </div>
-
-          <div class="clips" id="clips"></div>
-        </section>
-      </section>
-
-      <!-- ===================== ЗАГРУЗКА ===================== -->
-      <section class="screen" data-screen="upload">
-        <div class="layout-upload">
-          <div class="card">
-            <div class="card__head">
-              <h2 class="card__title">Что грузим</h2>
-              <span class="card__note" id="upload-source">—</span>
-            </div>
-            <div class="pick-list" id="pick-list">
-              <div class="empty">
-                <p>Сначала сделай нарезку — клипы появятся здесь.</p>
-                <button class="btn btn--soft" data-goto="cut">К нарезке</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card__head"><h2 class="card__title">Куда</h2></div>
-
-            <div class="platforms" id="platforms">
-              <button class="platform is-active" data-platform="tiktok">
-                <span class="platform__dot" style="--c:#ffffff"></span>
-                <span class="platform__name">TikTok</span>
-                <span class="platform__hint">tiktokstudio</span>
-              </button>
-              <button class="platform" data-platform="youtube">
-                <span class="platform__dot" style="--c:#ff4444"></span>
-                <span class="platform__name">YouTube Shorts</span>
-                <span class="platform__hint">studio.youtube.com</span>
-              </button>
-              <button class="platform" data-platform="vk">
-                <span class="platform__dot" style="--c:#4f8bff"></span>
-                <span class="platform__name">VK Клипы</span>
-                <span class="platform__hint">vk.com</span>
-              </button>
-            </div>
-
-            <div class="param">
-              <label class="param__label">Браузер</label>
-              <div class="segmented" id="engine-seg" role="group" aria-label="Браузер">
-                <button data-engine="plain" class="is-active">Встроенный</button>
-                <button data-engine="dolphin">Dolphin</button>
-                <button data-engine="adspower">AdsPower</button>
-              </div>
-            </div>
-
-            <div class="param" id="profile-row">
-              <label class="param__label" for="profile-select">Профиль</label>
-              <div class="row">
-                <select class="input" id="profile-select">
-                  <option value="">по умолчанию</option>
-                </select>
-                <button class="btn btn--ghost btn--tiny" id="refresh-profiles" title="Обновить список профилей">Обновить</button>
-              </div>
-              <p class="hint" id="engine-hint">Сохранённые логины живут в локальном профиле Cutter.</p>
-            </div>
-
-            <div class="param">
-              <label class="param__label" for="visibility">Доступ</label>
-              <select class="input" id="visibility">
-                <option value="public">Публично</option>
-                <option value="unlisted">По ссылке</option>
-                <option value="private">Приватно</option>
-              </select>
-            </div>
-
-            <label class="switch">
-              <input type="checkbox" id="dry-run" checked>
-              <span class="switch__track"><span class="switch__thumb"></span></span>
-              <span class="switch__label">Тренировка: довести до кнопки и не публиковать</span>
-            </label>
-
-            <button class="btn btn--primary btn--wide" id="upload-btn" disabled>
-              <svg class="ico"><use href="#i-upload"/></svg><span id="upload-btn-text">Загрузить 0 клипов</span>
+          <div class="field-label">Режим сборки</div>
+          <div class="mode-stack" id="mode-stack">
+            <button class="mode-card is-active" data-mode="moments" type="button">
+              <div class="mode-name">Умные моменты</div>
+              <div class="mode-desc">ИИ ищет самые сильные хуки и пики</div>
+            </button>
+            <button class="mode-card" data-mode="parts" type="button">
+              <div class="mode-name">Разбить по частям</div>
+              <div class="mode-desc">Ровные серии «Часть 1 / 2 / 3» без потерь</div>
+            </button>
+            <button class="mode-card" data-mode="brainrot" type="button">
+              <div class="mode-name">Озвучка дорамы + музыка</div>
+              <div class="mode-desc">Пересказ + голос + каноничный фон</div>
             </button>
           </div>
-        </div>
 
-        <div class="card card--result" id="upload-result" hidden>
-          <div class="card__head"><h2 class="card__title">Результат загрузки</h2></div>
-          <div id="upload-result-list" class="upload-list"></div>
-        </div>
-      </section>
-
-      <!-- ===================== ИСТОРИЯ ===================== -->
-      <section class="screen" data-screen="history">
-        <div class="card">
-          <div class="card__head">
-            <h2 class="card__title">Последние задачи</h2>
-            <button class="btn btn--ghost btn--tiny" id="history-refresh">Обновить</button>
-          </div>
-          <div class="history" id="history">
-            <div class="empty"><p>Пока пусто. Запусти первую нарезку.</p></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===================== НАСТРОЙКИ ===================== -->
-      <section class="screen" data-screen="settings">
-        <div class="layout-settings">
-
-          <div class="card card--wide">
-            <div class="card__head">
-              <h2 class="card__title">Аккаунты с подпиской</h2>
-              <span class="card__note">вход вместо API-ключей</span>
-            </div>
-            <div class="acc-actions">
-              <button class="btn btn--primary btn--tiny" id="login-chatgpt-oauth" type="button">
-                <svg class="ico"><use href="#i-user"/></svg><span>Войти в ChatGPT (OAuth подписка)</span>
-              </button>
-              <button class="btn btn--soft btn--tiny" id="login-chatgpt-browser" type="button">
-                <svg class="ico"><use href="#i-user"/></svg><span>Войти в ChatGPT (браузер)</span>
-              </button>
-              <button class="btn btn--soft btn--tiny" id="login-google-browser" type="button">
-                <svg class="ico"><use href="#i-user"/></svg><span>Войти в Google Gemini (браузер)</span>
-              </button>
-            </div>
-            <div class="accounts-list" id="accounts-list">
-              <div class="empty"><p>Аккаунты не подключены. Можно войти в ChatGPT Plus/Pro или Google Gemini.</p></div>
-            </div>
-            <p class="hint">Google-профиль также автоматически помогает обходить проверку «вы не робот» при скачивании с YouTube.</p>
-          </div>
-
-          <div class="card">
-            <div class="card__head">
-              <h2 class="card__title">Мозги</h2>
-              <span class="card__note">кто выбирает моменты</span>
-            </div>
-
-            <div class="field">
-              <label class="field__label" for="llm-provider">Провайдер</label>
-              <select class="input" id="llm-provider"></select>
-            </div>
-
-            <div class="field" id="llm-account-row" hidden>
-              <label class="field__label" for="llm-account">Аккаунт подписки</label>
-              <select class="input" id="llm-account"></select>
-            </div>
-
-            <div class="field">
-              <label class="field__label" for="llm-model">Модель</label>
-              <select class="input" id="llm-model"></select>
-              <input class="input" id="llm-model-custom" placeholder="например qwen2.5-14b-instruct" hidden>
-            </div>
-
-            <div class="field" id="llm-base-row" hidden>
-              <label class="field__label" for="llm-base-url">Адрес сервера (/v1)</label>
-              <input class="input" id="llm-base-url" placeholder="http://127.0.0.1:1234/v1" spellcheck="false">
-              <p class="hint">Любой OpenAI-совместимый: LM Studio, vLLM, Ollama, шлюзы. Ключ можно не заполнять.</p>
-            </div>
-
-            <div class="field" id="llm-key-row">
-              <label class="field__label" for="llm-key">API-ключ</label>
-              <div class="row">
-                <input class="input" id="llm-key" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
-                <button class="btn btn--soft btn--tiny" id="test-key">Проверить</button>
+          <!-- Conditional Mode Options -->
+          <div class="subpanel" id="opt-moments">
+            <div class="split-clips-dur">
+              <div>
+                <label class="field-label" for="opt-clips">Клипов</label>
+                <input type="number" id="opt-clips" min="1" max="20" value="5">
               </div>
-              <p class="hint" id="llm-hint">Ключ хранится локально в app/data/settings.json</p>
+              <div>
+                <label class="field-label" for="opt-dur-preset">Длина клипа</label>
+                <select id="opt-dur-preset">
+                  <option value="15-35">Короткие 15–35с</option>
+                  <option value="18-60" selected>Оптимум 18–60с</option>
+                  <option value="30-75">Средние 30–75с</option>
+                  <option value="45-120">Длинные 45–120с</option>
+                  <option value="custom">Свой диапазон</option>
+                </select>
+              </div>
             </div>
-
-            <div class="field" id="llm-test-account-row" hidden>
-              <button class="btn btn--soft btn--tiny" id="test-account-btn" type="button">Проверить аккаунт</button>
+            <div class="split-2" id="custom-dur-row" hidden>
+              <div>
+                <label class="field-label" for="opt-min-dur">Мин (сек)</label>
+                <input type="number" id="opt-min-dur" min="5" max="180" value="18">
+              </div>
+              <div>
+                <label class="field-label" for="opt-max-dur">Макс (сек)</label>
+                <input type="number" id="opt-max-dur" min="10" max="240" value="60">
+              </div>
             </div>
+          </div>
 
-            <label class="switch">
-              <input type="checkbox" id="llm-fallback" checked>
-              <span class="switch__track"><span class="switch__thumb"></span></span>
-              <span class="switch__label">Если провайдер упал — пробовать следующие</span>
+          <div class="subpanel" id="opt-parts" hidden>
+            <div class="block-label-row">
+              <span class="field-label">Длительность каждой части</span>
+              <strong class="accent-val" id="part-sec-label">45с</strong>
+            </div>
+            <div class="pill-strip" id="part-presets">
+              <button class="mini-pill" data-sec="15" type="button">15с</button>
+              <button class="mini-pill" data-sec="30" type="button">30с</button>
+              <button class="mini-pill is-active" data-sec="45" type="button">45с</button>
+              <button class="mini-pill" data-sec="60" type="button">60с</button>
+              <button class="mini-pill" data-sec="90" type="button">90с</button>
+            </div>
+            <input type="range" id="part-sec-range" min="10" max="180" step="5" value="45">
+            <div class="split-2" style="margin-top:8px">
+              <div>
+                <label class="field-label" for="parts-max-clips">Макс. частей</label>
+                <input type="number" id="parts-max-clips" min="1" max="30" value="8">
+              </div>
+              <div class="muted-note">Каждая часть пронумерована в титрах и метаданных</div>
+            </div>
+          </div>
+
+          <div class="subpanel" id="opt-brainrot" hidden>
+            <label class="field-label" for="opt-voice">Голос озвучки</label>
+            <select id="opt-voice"></select>
+            <div class="block-label-row" style="margin-top:10px">
+              <label class="field-label" for="opt-orig-vol">Громкость оригинала</label>
+              <strong class="accent-val" id="orig-vol-label">8%</strong>
+            </div>
+            <input type="range" id="opt-orig-vol" min="0" max="40" step="1" value="8">
+            <label class="switch-row" style="margin-top:10px">
+              <input type="checkbox" id="opt-brainrot-rewrite" checked>
+              <span>ИИ-пересказ «китайская драма / плот-твист»</span>
             </label>
           </div>
+        </aside>
 
-          <div class="card">
-            <div class="card__head">
-              <h2 class="card__title">Слух</h2>
-              <span class="card__note">локальное распознавание</span>
-            </div>
-            <div class="models" id="models"></div>
-            <p class="hint">Модели качаются с ModelScope — из РФ работает без VPN.</p>
+        <!-- COL 2: VISUALS + SOUND + LIVE 9:16 STAGE + RUN CTA -->
+        <section class="panel col-stage">
+          <div class="panel-head">
+            <h2>Визуал, звук и превью 9:16</h2>
+            <span class="hint-tag">Шаг 2</span>
           </div>
 
-          <div class="card">
-            <div class="card__head"><h2 class="card__title">Папки, сеть и рендер</h2></div>
-            <div class="field">
-              <label class="field__label" for="outdir">Куда складывать клипы</label>
-              <input class="input" id="outdir" placeholder="по умолчанию: app/data/jobs">
+          <div class="stage-layout">
+            <div class="stage-controls">
+              <div class="control-group">
+                <div class="field-label">Кадрирование 9:16</div>
+                <div class="pill-strip" id="framing-pills">
+                  <button class="mini-pill is-active" data-framing="auto" type="button">Авто</button>
+                  <button class="mini-pill" data-framing="blur" type="button">Размытие</button>
+                  <button class="mini-pill" data-framing="crop" type="button">Кроп</button>
+                  <button class="mini-pill" data-framing="black" type="button">Чёрный</button>
+                  <button class="mini-pill" data-framing="original" type="button">Оригинал</button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <div class="block-label-row">
+                  <span class="field-label">Стиль субтитров</span>
+                  <label class="switch-inline">
+                    <input type="checkbox" id="opt-subtitles" checked>
+                    <span>Вкл</span>
+                  </label>
+                </div>
+                <div class="pill-strip" id="style-pills">
+                  <button class="mini-pill is-active" data-style="classic" type="button">Классика</button>
+                  <button class="mini-pill" data-style="bold" type="button">Жирный</button>
+                  <button class="mini-pill" data-style="clean" type="button">Чистый</button>
+                  <button class="mini-pill" data-style="neon" type="button">Неон</button>
+                  <button class="mini-pill" data-style="drama" type="button">Дорама</button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <div class="field-label">Цветовой фильтр (FX)</div>
+                <div class="pill-strip" id="effect-pills"></div>
+              </div>
+
+              <div class="control-group">
+                <div class="block-label-row">
+                  <label class="field-label" for="opt-music">Фоновая музыка</label>
+                  <strong class="accent-val" id="music-vol-label">18%</strong>
+                </div>
+                <div class="input-row">
+                  <select id="opt-music"></select>
+                </div>
+                <input type="range" id="opt-music-vol" min="0" max="60" step="1" value="18">
+              </div>
+
+              <div class="split-2">
+                <div class="control-group">
+                  <label class="field-label" for="opt-protection">Уникализация</label>
+                  <select id="opt-protection">
+                    <option value="off">Выкл (оригинал)</option>
+                    <option value="soft">Мягкая (микро-сдвиг/темп)</option>
+                    <option value="strong">Сильная (анти-матч)</option>
+                  </select>
+                </div>
+                <div class="control-group">
+                  <div class="block-label-row">
+                    <label class="field-label" for="opt-integration">Реклама</label>
+                    <button class="link-btn" id="open-int-modal-btn" type="button">+ добавить</button>
+                  </div>
+                  <select id="opt-integration">
+                    <option value="">Без интеграции</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <div class="field">
-              <label class="field__label" for="language">Язык исходника</label>
-              <select class="input" id="language">
+
+            <!-- LIVE 9:16 STAGE MOCKUP -->
+            <div class="stage-monitor">
+              <div class="phone-frame" id="preview-phone" data-framing="auto" data-effect="none" data-style="classic">
+                <div class="phone-bg-blur"></div>
+                <div class="phone-video-box">
+                  <div class="phone-grid"></div>
+                  <div class="phone-subject">
+                    <div class="phone-badge-top" id="preview-mode-badge">МОМЕНТ #1</div>
+                    <div class="phone-ad-top" id="preview-ad-pill" hidden>РЕКЛАМА / БАННЕР</div>
+                  </div>
+                </div>
+                <div class="phone-sub-box" id="preview-sub-box">
+                  <span id="preview-sub-text">ОН НЕ ЗНАЛ ЧТО ЭТО ЛОВУШКА</span>
+                </div>
+                <div class="phone-ad-bottom" id="preview-ad-bottom" hidden>PROMO · ИНТЕГРАЦИЯ</div>
+                <div class="phone-hud-bottom">
+                  <span id="preview-fx-label">FX: нет</span>
+                  <span id="preview-music-label">♪ без музыки</span>
+                </div>
+              </div>
+              <div class="preview-caption">Живой предпросмотр композиции 1080×1920</div>
+            </div>
+          </div>
+
+          <div class="action-dock">
+            <div class="action-summary" id="action-summary">Режим: Моменты · Авто 9:16 · Классика</div>
+            <div class="action-buttons">
+              <button class="btn-danger" id="cancel-job-btn" type="button" hidden>Остановить</button>
+              <button class="btn-primary" id="run-btn" type="button">
+                <span id="run-btn-label">Собрать клипы</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- COL 3: PIPELINE + TERMINAL -->
+        <aside class="panel col-monitor">
+          <div class="panel-head">
+            <h2>Живой пайплайн</h2>
+            <span class="pct-pill" id="job-pct-badge">Ожидание</span>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-meta">
+              <span id="job-step-name">Готов к запуску</span>
+              <span id="job-elapsed" class="mono">00:00</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="job-progress-fill" style="width:0%"></div>
+            </div>
+            <div class="progress-sub" id="job-step-msg">Выберите файл или вставьте YouTube-ссылку</div>
+          </div>
+
+          <ol class="stepper" id="pipeline-stepper">
+            <li data-stage="source"><span class="step-idx">1</span><span>Загрузка и анализ исходника</span></li>
+            <li data-stage="stt"><span class="step-idx">2</span><span>Распознавание речи (Whisper)</span></li>
+            <li data-stage="llm"><span class="step-idx">3</span><span>Подбор сцен / частей / озвучка</span></li>
+            <li data-stage="render"><span class="step-idx">4</span><span>Рендер 9:16, титры и звук</span></li>
+            <li data-stage="done"><span class="step-idx">5</span><span>Готовые клипы</span></li>
+          </ol>
+
+          <div class="terminal-head">
+            <span>Журнал процесса</span>
+            <div class="terminal-actions">
+              <button class="ghost-xs" id="copy-log-btn" type="button">Копировать</button>
+              <button class="ghost-xs" id="open-folder-btn" type="button" hidden>Открыть папку</button>
+            </div>
+          </div>
+          <pre class="terminal" id="job-terminal">Готов. Выберите видео слева и нажмите «Собрать клипы».</pre>
+        </aside>
+      </div>
+
+      <!-- BOTTOM FULL-WIDTH OUTPUT CLIP DECK -->
+      <section class="panel clip-deck" id="clip-deck">
+        <div class="deck-head">
+          <div>
+            <h2>Готовые клипы <span class="badge-count" id="deck-count">0</span></h2>
+            <div class="muted-xs" id="deck-source">После сборки клипы появятся здесь для просмотра, правок, рекламы и публикации</div>
+          </div>
+          <div class="deck-toolbar">
+            <button class="btn-soft" id="deck-select-all" type="button">Выбрать все</button>
+            <button class="btn-soft" id="deck-select-none" type="button">Снять</button>
+            <div class="inline-apply">
+              <select id="deck-int-select">
+                <option value="">Выбрать рекламу…</option>
+              </select>
+              <button class="btn-soft" id="deck-apply-int-btn" type="button">Вшить</button>
+            </div>
+            <button class="btn-accent" id="deck-to-upload-btn" type="button">В публикацию (<span id="deck-selected-count">0</span>)</button>
+          </div>
+        </div>
+        <div class="clips-grid" id="clips-grid">
+          <div class="empty-state">Пока нет собранных клипов в текущей задаче.</div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~ TAB: UPLOAD ~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <section class="tab-view" id="tab-upload">
+      <div class="two-col-grid">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Пакетная публикация</h2>
+            <span class="hint-tag">Shorts / Reels / TikTok / VK</span>
+          </div>
+
+          <label class="field-label" for="up-job-select">Задача с клипами</label>
+          <select id="up-job-select"></select>
+
+          <div class="block-label-row" style="margin-top:14px">
+            <span class="field-label">Выберите клипы (<span id="up-sel-count">0</span>)</span>
+            <button class="link-btn" id="up-toggle-all" type="button">Переключить все</button>
+          </div>
+          <div class="checklist-box" id="up-clip-list">
+            <div class="empty-state">Нет доступных клипов</div>
+          </div>
+
+          <div class="field-label" style="margin-top:14px">Площадки</div>
+          <div class="platform-grid" id="up-platforms">
+            <label class="check-card"><input type="checkbox" value="youtube" checked><span>YouTube Shorts</span></label>
+            <label class="check-card"><input type="checkbox" value="tiktok"><span>TikTok</span></label>
+            <label class="check-card"><input type="checkbox" value="instagram"><span>Instagram Reels</span></label>
+            <label class="check-card"><input type="checkbox" value="vk"><span>VK Клипы</span></label>
+          </div>
+
+          <div class="split-2" style="margin-top:14px">
+            <div>
+              <label class="field-label" for="up-visibility">Видимость</label>
+              <select id="up-visibility">
+                <option value="public">Открытый доступ</option>
+                <option value="unlisted">По ссылке</option>
+                <option value="private" selected>Приватный / черновик</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="up-engine">Браузер</label>
+              <select id="up-engine">
+                <option value="plain">Встроенный Playwright</option>
+                <option value="dolphin">Dolphin Anty</option>
+                <option value="adspower">AdsPower</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="up-profile-row" style="margin-top:10px" hidden>
+            <div class="block-label-row">
+              <label class="field-label" for="up-profile-id">Профиль антидетекта</label>
+              <button class="link-btn" id="up-refresh-profiles" type="button">Обновить список</button>
+            </div>
+            <select id="up-profile-id"></select>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Запуск и отчёт загрузки</h2>
+            <span class="pct-pill" id="up-status-badge">Готово</span>
+          </div>
+
+          <div class="callout-box">
+            <strong>Безопасный тест:</strong> «Тестовый прогон» проверяет файлы, заголовки и открытие формы загрузки без финальной публикации.
+          </div>
+
+          <div class="action-buttons" style="margin:14px 0">
+            <button class="btn-soft" id="up-dry-btn" type="button">Тестовый прогон (Dry Run)</button>
+            <button class="btn-primary" id="up-publish-btn" type="button">Опубликовать выбранные</button>
+          </div>
+
+          <div class="terminal-head">
+            <span>Журнал публикации</span>
+            <span class="mono" id="up-progress-label">0%</span>
+          </div>
+          <pre class="terminal tall" id="up-terminal">Выберите клипы и площадки слева, затем запустите проверку или публикацию.</pre>
+        </section>
+      </div>
+    </section>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~ TAB: HISTORY ~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <section class="tab-view" id="tab-history">
+      <section class="panel">
+        <div class="deck-head">
+          <div>
+            <h2>История задач</h2>
+            <div class="muted-xs">Все нарезки, загрузки с YouTube, входы в аккаунты и публикации</div>
+          </div>
+          <div class="deck-toolbar">
+            <input type="search" id="hist-search" placeholder="Поиск по имени или URL…">
+            <select id="hist-filter">
+              <option value="all">Все типы</option>
+              <option value="clipping">Нарезка / YouTube</option>
+              <option value="login">Вход в аккаунт</option>
+              <option value="upload">Публикация</option>
+            </select>
+            <button class="btn-soft" id="hist-refresh-btn" type="button">Обновить</button>
+          </div>
+        </div>
+        <div class="history-list" id="history-list">
+          <div class="empty-state">Загрузка истории…</div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~ TAB: SETTINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+    <section class="tab-view" id="tab-settings">
+
+      <!-- ACCOUNTS WITH SUBSCRIPTION -->
+      <section class="panel accounts-hero">
+        <div class="deck-head">
+          <div>
+            <h2>Аккаунты с подпиской вместо API-ключей</h2>
+            <div class="muted-xs">Вход через ChatGPT Plus/Pro (OAuth или браузер) или Google Gemini (браузер также снимает капчу YouTube)</div>
+          </div>
+          <div class="deck-toolbar">
+            <button class="btn-primary" id="login-chatgpt-oauth" type="button">Войти в ChatGPT (OAuth)</button>
+            <button class="btn-soft" id="login-chatgpt-browser" type="button">ChatGPT (браузер)</button>
+            <button class="btn-soft" id="login-google-browser" type="button">Google Gemini (браузер)</button>
+          </div>
+        </div>
+
+        <!-- LIVE AUTH CONSOLE (VISIBLE DURING/AFTER LOGIN) -->
+        <div class="auth-console" id="auth-console" hidden>
+          <div class="auth-console-head">
+            <div>
+              <strong id="auth-console-title">Авторизация аккаунта…</strong>
+              <span class="muted-xs" id="auth-console-msg">Подготовка браузера</span>
+            </div>
+            <div class="auth-console-actions">
+              <a class="btn-soft" id="auth-url-open" href="#" target="_blank" rel="noopener" hidden>Открыть ссылку</a>
+              <button class="btn-soft" id="auth-url-copy" type="button" hidden>Копировать URL</button>
+              <button class="btn-danger" id="auth-cancel-btn" type="button" hidden>Отмена</button>
+            </div>
+          </div>
+          <div class="progress-track" style="margin:8px 0">
+            <div class="progress-fill" id="auth-progress-fill" style="width:10%"></div>
+          </div>
+          <pre class="terminal compact" id="auth-terminal"></pre>
+        </div>
+
+        <div class="accounts-grid" id="accounts-grid">
+          <div class="empty-state">Аккаунты не подключены. Нажмите любую кнопку входа выше.</div>
+        </div>
+      </section>
+
+      <!-- LOWER 3 SETTINGS PANELS -->
+      <div class="three-col-grid" style="margin-top:16px">
+
+        <!-- AI PROVIDERS -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>ИИ и провайдеры</h2>
+            <span class="hint-tag">Сценарий</span>
+          </div>
+          <label class="field-label" for="set-provider">Провайдер</label>
+          <select id="set-provider"></select>
+
+          <label class="field-label" for="set-model" style="margin-top:10px">Модель</label>
+          <select id="set-model"></select>
+
+          <div id="set-key-wrap" style="margin-top:10px">
+            <label class="field-label" for="set-api-key">API-ключ</label>
+            <div class="input-row">
+              <input type="password" id="set-api-key" placeholder="sk-… или оставьте пустым для подписки">
+              <button class="btn-soft" id="test-provider-btn" type="button">Проверить</button>
+            </div>
+          </div>
+
+          <div id="set-baseurl-wrap" style="margin-top:10px" hidden>
+            <label class="field-label" for="set-base-url">Base URL</label>
+            <input type="url" id="set-base-url" placeholder="http://127.0.0.1:11434/v1">
+          </div>
+
+          <label class="switch-row" style="margin-top:12px">
+            <input type="checkbox" id="set-fallback" checked>
+            <span>Авто-резерв: переключать провайдера при сбое</span>
+          </label>
+
+          <div class="test-status" id="provider-test-status"></div>
+        </section>
+
+        <!-- WHISPER MODELS -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Распознавание речи</h2>
+            <span class="hint-tag">Whisper</span>
+          </div>
+          <div class="models-list" id="models-list"></div>
+          <div class="muted-note" style="margin-top:10px">Загрузка идёт с ModelScope — работает напрямую без VPN.</div>
+        </section>
+
+        <!-- RENDER / PATHS / NETWORK -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Рендер, папки и сеть</h2>
+            <span class="hint-tag">Система</span>
+          </div>
+          <label class="field-label" for="set-outdir">Папка для клипов</label>
+          <input type="text" id="set-outdir" placeholder="по умолчанию: app/data/jobs">
+
+          <div class="split-2" style="margin-top:10px">
+            <div>
+              <label class="field-label" for="set-lang">Язык исходника</label>
+              <select id="set-lang">
+                <option value="auto">Автоопределение</option>
                 <option value="ru">Русский</option>
                 <option value="en">Английский</option>
                 <option value="zh">Китайский</option>
-                <option value="auto">Определять сам</option>
               </select>
             </div>
-            <div class="field">
-              <label class="field__label" for="encoder-select">Ускорение рендера видео</label>
-              <select class="input" id="encoder-select">
-                <option value="auto">Авто (GPU если доступен)</option>
-                <option value="cpu">CPU (libx264)</option>
-                <option value="nvenc">NVIDIA NVENC</option>
-                <option value="qsv">Intel QuickSync</option>
-                <option value="amf">AMD AMF</option>
+            <div>
+              <label class="field-label" for="set-encoder">Энкодер видео</label>
+              <select id="set-encoder">
+                <option value="auto">Авто (GPU / CPU)</option>
+                <option value="h264_nvenc">NVIDIA NVENC</option>
+                <option value="h264_qsv">Intel QSV</option>
+                <option value="h264_amf">AMD AMF</option>
+                <option value="libx264">CPU (libx264)</option>
               </select>
             </div>
-            <div class="field">
-              <label class="field__label" for="net-proxy">Прокси для YouTube / ИИ (необязательно)</label>
-              <input class="input" id="net-proxy" placeholder="http://127.0.0.1:10808 или socks5://127.0.0.1:1080" spellcheck="false">
-            </div>
-            <label class="switch">
-              <input type="checkbox" id="net-ipv4" checked>
-              <span class="switch__track"><span class="switch__thumb"></span></span>
-              <span class="switch__label">Принудительно IPv4 для YouTube (стабильнее с zapret / VPN)</span>
-            </label>
-            <label class="switch">
-              <input type="checkbox" id="net-cookies" checked>
-              <span class="switch__track"><span class="switch__thumb"></span></span>
-              <span class="switch__label">Подхватывать cookies Google-аккаунта при ошибках YouTube</span>
-            </label>
-            <button class="btn btn--primary" id="save-settings" style="margin-top:12px">Сохранить</button>
           </div>
 
-          <div class="card card--about">
-            <div class="card__head"><h2 class="card__title">О приложении</h2></div>
-            <p class="about__text" id="about-text">Cutter 1.0 · локальная нарезка видео в вертикальные клипы.</p>
-            <p class="hint" id="about-stack">ffmpeg · faster-whisper · DeepSeek</p>
-          </div>
-        </div>
-      </section>
+          <label class="field-label" for="set-proxy" style="margin-top:10px">Прокси (YouTube / ИИ / браузер)</label>
+          <input type="text" id="set-proxy" placeholder="http://127.0.0.1:10808 или socks5://127.0.0.1:1080">
 
-    </div>
+          <label class="switch-row" style="margin-top:10px">
+            <input type="checkbox" id="set-yt-cookies" checked>
+            <span>Брать cookies Google-профиля для YouTube</span>
+          </label>
+
+          <button class="btn-primary" id="save-settings-btn" type="button" style="width:100%;margin-top:14px">
+            Сохранить настройки
+          </button>
+        </section>
+      </div>
+    </section>
+
   </main>
 </div>
 
-<div class="modal" id="modal" hidden>
-  <div class="modal__backdrop" data-close="1"></div>
-  <div class="modal__body" role="dialog" aria-modal="true" aria-label="Просмотр клипа">
-    <button class="modal__close" id="modal-close" aria-label="Закрыть">
-      <svg class="ico"><use href="#i-close"/></svg>
-    </button>
-    <video id="modal-video" controls playsinline></video>
-    <div class="modal__meta">
-      <strong id="modal-title"></strong>
-      <span id="modal-hook"></span>
+<!-- ============================= MODALS ============================= -->
+
+<!-- VIDEO PLAYER + METADATA EDIT / RECUT MODAL -->
+<div class="modal-backdrop" id="clip-modal" hidden>
+  <div class="modal-dialog modal-wide">
+    <div class="modal-head">
+      <h3 id="cm-heading">Клип</h3>
+      <button class="ghost-xs" data-close-modal="clip-modal" type="button">✕ Закрыть</button>
+    </div>
+    <div class="modal-clip-body">
+      <div class="modal-video-col">
+        <video id="cm-video" controls playsinline></video>
+      </div>
+      <div class="modal-form-col">
+        <label class="field-label" for="cm-title">Заголовок</label>
+        <input type="text" id="cm-title">
+
+        <label class="field-label" for="cm-hook" style="margin-top:10px">Хук / первая фраза</label>
+        <input type="text" id="cm-hook">
+
+        <label class="field-label" for="cm-tags" style="margin-top:10px">Хештеги (через пробел)</label>
+        <input type="text" id="cm-tags">
+
+        <div class="split-2" style="margin-top:10px">
+          <div>
+            <label class="field-label" for="cm-start">Старт (сек)</label>
+            <input type="number" id="cm-start" step="0.1" min="0">
+          </div>
+          <div>
+            <label class="field-label" for="cm-end">Конец (сек)</label>
+            <input type="number" id="cm-end" step="0.1" min="1">
+          </div>
+        </div>
+
+        <div class="action-buttons" style="margin-top:16px">
+          <button class="btn-soft" id="cm-recut-btn" type="button">Перерезать тайминг</button>
+          <button class="btn-primary" id="cm-save-btn" type="button">Сохранить текст</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Модалка рекламной интеграции -->
-<div class="modal" id="ad-modal" hidden>
-  <div class="modal__backdrop" data-close-ad="1"></div>
-  <div class="modal__body modal__body--wide" role="dialog" aria-modal="true" aria-label="Рекламная интеграция">
-    <button class="modal__close" id="ad-modal-close" aria-label="Закрыть">
-      <svg class="ico"><use href="#i-close"/></svg>
-    </button>
-    <h2 class="card__title" style="margin-bottom:14px">Рекламная интеграция</h2>
+<!-- NEW AD INTEGRATION MODAL -->
+<div class="modal-backdrop" id="int-modal" hidden>
+  <div class="modal-dialog">
+    <div class="modal-head">
+      <h3>Добавить рекламную интеграцию</h3>
+      <button class="ghost-xs" data-close-modal="int-modal" type="button">✕ Закрыть</button>
+    </div>
+    <div class="modal-body">
+      <label class="field-label" for="int-name">Название</label>
+      <input type="text" id="int-name" placeholder="Например: VPN Промо">
 
-    <div class="field">
-      <label class="field__label" for="ad-file">Файл рекламы (MP4, MOV, PNG, WebP, GIF)</label>
-      <input class="input" id="ad-file" type="file" accept="video/*,image/*">
-    </div>
-    <div class="row">
-      <div class="field" style="flex:1">
-        <label class="field__label" for="ad-name">Название</label>
-        <input class="input" id="ad-name" placeholder="например VPN преролл">
-      </div>
-      <div class="field" style="flex:1">
-        <label class="field__label" for="ad-mode">Тип вставки</label>
-        <select class="input" id="ad-mode">
-          <option value="insert">Видео-вставка (MP4 в ролик)</option>
-          <option value="overlay">Баннер поверх кадра (PNG/GIF)</option>
-        </select>
-      </div>
-    </div>
-    <div class="row">
-      <div class="field" style="flex:1">
-        <label class="field__label" for="ad-position">Куда вставить</label>
-        <select class="input" id="ad-position">
-          <option value="after_hook">После хука (через 3с)</option>
-          <option value="start">В самом начале (преролл)</option>
-          <option value="end">В конце (постролл)</option>
-        </select>
-      </div>
-      <div class="field" id="ad-hook-row" style="width:140px">
-        <label class="field__label" for="ad-hook-sec">Сек. хука</label>
-        <input class="input" id="ad-hook-sec" type="number" min="1" max="30" step="0.5" value="3">
-      </div>
-      <div class="field" id="ad-scale-row" style="width:140px" hidden>
-        <label class="field__label" for="ad-scale">Ширина (%)</label>
-        <input class="input" id="ad-scale" type="number" min="20" max="100" value="75">
-      </div>
-    </div>
-    <div class="row" id="ad-time-row" hidden>
-      <div class="field" style="flex:1">
-        <label class="field__label" for="ad-start-sec">Показать с (сек)</label>
-        <input class="input" id="ad-start-sec" type="number" min="0" step="0.5" value="0">
-      </div>
-      <div class="field" style="flex:1">
-        <label class="field__label" for="ad-dur-sec">Длительность (0 = весь клип)</label>
-        <input class="input" id="ad-dur-sec" type="number" min="0" step="0.5" value="0">
-      </div>
-    </div>
+      <label class="field-label" for="int-file" style="margin-top:10px">Видео (.mp4) или картинка/баннер (.png)</label>
+      <input type="file" id="int-file" accept="video/*,image/png,image/jpeg,image/webp">
 
-    <div class="row" style="margin-top:6px">
-      <button class="btn btn--primary" id="ad-save-btn" type="button" style="flex:1">Сохранить в библиотеку</button>
-      <button class="btn btn--soft" id="ad-apply-now-btn" type="button" style="flex:1" hidden>Применить к готовым клипам</button>
-    </div>
-
-    <div class="ad-library" id="ad-library"></div>
-  </div>
-</div>
-
-<!-- Модалка редактирования клипа и перерезки -->
-<div class="modal" id="edit-modal" hidden>
-  <div class="modal__backdrop" data-close-edit="1"></div>
-  <div class="modal__body modal__body--wide" role="dialog" aria-modal="true" aria-label="Редактировать клип">
-    <button class="modal__close" id="edit-modal-close" aria-label="Закрыть">
-      <svg class="ico"><use href="#i-close"/></svg>
-    </button>
-    <h2 class="card__title" style="margin-bottom:14px">Редактировать клип</h2>
-    <div class="field">
-      <label class="field__label" for="edit-title">Заголовок</label>
-      <input class="input" id="edit-title" maxlength="120">
-    </div>
-    <div class="field">
-      <label class="field__label" for="edit-hook">Хук / описание</label>
-      <input class="input" id="edit-hook" maxlength="200">
-    </div>
-    <div class="field">
-      <label class="field__label" for="edit-tags">Хэштеги (через пробел)</label>
-      <input class="input" id="edit-tags" placeholder="shorts дорама история">
-    </div>
-    <div class="row">
-      <div class="field" style="flex:1">
-        <label class="field__label" for="edit-start">Начало (сек)</label>
-        <input class="input" id="edit-start" type="number" min="0" step="0.5">
+      <div class="split-2" style="margin-top:10px">
+        <div>
+          <label class="field-label" for="int-mode">Тип интеграции</label>
+          <select id="int-mode">
+            <option value="">Авто (mp4→вставка, png→баннер)</option>
+            <option value="insert">Видео-вставка</option>
+            <option value="overlay">PNG/Картинка поверх</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label" for="int-pos">Позиция</label>
+          <select id="int-pos">
+            <option value="after_hook">После хука (врезка)</option>
+            <option value="start">В начале</option>
+            <option value="end">В конце</option>
+            <option value="bottom">Баннер снизу</option>
+            <option value="top">Баннер сверху</option>
+          </select>
+        </div>
       </div>
-      <div class="field" style="flex:1">
-        <label class="field__label" for="edit-end">Конец (сек)</label>
-        <input class="input" id="edit-end" type="number" min="1" step="0.5">
+
+      <div class="split-2" style="margin-top:10px">
+        <div>
+          <label class="field-label" for="int-hook-sec">Сдвиг хука (сек)</label>
+          <input type="number" id="int-hook-sec" step="0.5" min="0" value="3">
+        </div>
+        <div>
+          <label class="field-label" for="int-scale">Масштаб баннера (%)</label>
+          <input type="number" id="int-scale" min="20" max="100" value="75">
+        </div>
       </div>
-    </div>
-    <div class="row">
-      <button class="btn btn--primary" id="edit-save-meta" type="button" style="flex:1">Сохранить текст</button>
-      <button class="btn btn--soft" id="edit-recut-btn" type="button" style="flex:1">Перерезать границы</button>
+
+      <div class="divider"></div>
+      <div class="field-label">Сохранённые интеграции</div>
+      <div class="saved-int-list" id="saved-int-list"></div>
+
+      <div class="action-buttons" style="margin-top:14px">
+        <button class="btn-primary" id="int-upload-btn" type="button">Загрузить и сохранить</button>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="toasts" id="toasts" aria-live="polite"></div>
+<!-- TOAST STACK -->
+<div class="toast-stack" id="toast-stack"></div>
 
 <script src="/assets/app.js"></script>
 </body>

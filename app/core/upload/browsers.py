@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -143,7 +144,35 @@ def _profile_dir(persistent_root: Path, profile_id: str) -> Path:
     return path
 
 
+def _ensure_temp_dir(fallback_root: Path) -> None:
+    """Playwright падает с ENOENT при запуске, если каталог TMP/TEMP не существует на диске."""
+    for var in ("TMP", "TEMP"):
+        val = (os.environ.get(var) or "").strip()
+        if val:
+            try:
+                Path(val).mkdir(parents=True, exist_ok=True)
+            except OSError:
+                pass
+    cur = Path(tempfile.gettempdir())
+    if not cur.is_dir():
+        safe_tmp = fallback_root / "_tmp"
+        safe_tmp.mkdir(parents=True, exist_ok=True)
+        os.environ["TMP"] = str(safe_tmp)
+        os.environ["TEMP"] = str(safe_tmp)
+
+
+def _clear_stale_locks(profile_dir: Path) -> None:
+    for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+        lock = profile_dir / name
+        if lock.exists() or lock.is_symlink():
+            try:
+                lock.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
 def open_session(target: BrowserTarget, *, persistent_root: Path, log: Callable[[str], None] = print) -> BrowserSession:
+    _ensure_temp_dir(persistent_root)
     from playwright.sync_api import sync_playwright
 
     engine = (target.engine or "plain").lower()
@@ -156,12 +185,18 @@ def open_session(target: BrowserTarget, *, persistent_root: Path, log: Callable[
             if not channel and not executable:
                 raise RuntimeError("не нашёл Chrome/Edge. Поставь любой из них или задай CUTTER_BROWSER_CHANNEL")
             profile_dir = _profile_dir(persistent_root, target.profile_id)
+            _clear_stale_locks(profile_dir)
             log(f"браузер: {channel or executable}, профиль {profile_dir.name}")
             options: dict[str, Any] = {
                 "user_data_dir": str(profile_dir),
                 "headless": target.headless,
                 "viewport": None,
-                "args": ["--start-maximized", "--disable-blink-features=AutomationControlled"],
+                "args": [
+                    "--start-maximized",
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-first-run",
+                    "--no-default-browser-check",
+                ],
                 "ignore_default_args": ["--enable-automation"],
             }
             if channel:
@@ -171,7 +206,15 @@ def open_session(target: BrowserTarget, *, persistent_root: Path, log: Callable[
             proxy = _parse_proxy(target.proxy)
             if proxy:
                 options["proxy"] = proxy
-            context = playwright.chromium.launch_persistent_context(**options)
+            try:
+                context = playwright.chromium.launch_persistent_context(**options)
+            except Exception:
+                if channel and executable:
+                    options.pop("channel", None)
+                    options["executable_path"] = executable
+                    context = playwright.chromium.launch_persistent_context(**options)
+                else:
+                    raise
             pages = context.pages
             page = pages[0] if pages else context.new_page()
             return BrowserSession(engine=engine, profile_id=target.profile_id, context=context,

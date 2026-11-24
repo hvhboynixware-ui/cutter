@@ -202,3 +202,38 @@ def test_youtube_retries_transient_error_with_fallback_client(monkeypatch, tmp_p
     assert len(attempts) >= 2
     assert attempts[1].get("force_ipv4") is True
     assert attempts[1]["extractor_args"]["youtube"]["player_client"] == ["android", "web"]
+
+
+# ---------------------------------------------------------------- Playwright TMP & OAuth port fix
+
+def test_browser_ensure_temp_dir_recreates_missing_tmp(tmp_path, monkeypatch):
+    from app.core.upload import browsers
+
+    missing_tmp = tmp_path / "missing_tmp"
+    monkeypatch.setenv("TMP", str(missing_tmp))
+    monkeypatch.setenv("TEMP", str(missing_tmp))
+    assert not missing_tmp.exists()
+    browsers._ensure_temp_dir(tmp_path / "fallback")
+    assert missing_tmp.is_dir()
+
+
+def test_oauth_reuse_http_server_sets_allow_reuse_address():
+    with accounts._OAuthCallbackServer("test-state", port=0) as srv:
+        assert srv._server is not None
+        assert getattr(srv._server, "allow_reuse_address", False) is True
+
+
+def test_web_ui_serves_redesigned_studio_html_and_assets():
+    from fastapi.testclient import TestClient
+    from app.server import app as fastapi_app
+
+    client = TestClient(fastapi_app)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "CUTTER" in resp.text
+    assert 'id="preview-phone"' in resp.text
+    assert 'id="auth-console"' in resp.text
+    assert client.get("/assets/app.css").status_code == 200
+    assert client.get("/assets/app.js").status_code == 200
+
+
