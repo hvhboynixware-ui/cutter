@@ -1736,6 +1736,144 @@ def _build_hype(ctx: Ctx) -> tuple[Bus, Bus, Bus]:
     return music, drums, fx
 
 
+def _build_drama_guzheng(ctx: Ctx) -> tuple[Bus, Bus, Bus]:
+    """Каноничная драма (грустное пианино + струнные): как в клипах китайских историй (Am-F-C-G)."""
+    beat = ctx.beat_len
+    music, drums, fx = Bus(ctx.n), Bus(ctx.n), Bus(ctx.n)
+    rng = ctx.rng
+
+    arp_patterns = [
+        [57, 64, 69, 72, 69, 64, 72, 69],  # Am
+        [53, 60, 65, 69, 65, 60, 69, 65],  # F
+        [48, 55, 60, 64, 60, 55, 64, 60],  # C
+        [55, 62, 67, 71, 67, 62, 71, 67],  # G
+    ]
+    top_notes = [
+        [(0.0, 76, 1.5), (1.5, 72, 1.0), (2.5, 74, 1.5)],
+        [(0.0, 77, 1.5), (1.5, 76, 1.0), (2.5, 72, 1.5)],
+        [(0.0, 79, 2.0), (2.0, 76, 1.0), (3.0, 72, 1.0)],
+        [(0.0, 74, 1.5), (1.5, 71, 1.5), (3.0, 69, 1.0)],
+    ]
+    for bar in range(ctx.bars):
+        base = ctx.at(bar)
+        arp = arp_patterns[bar % 4]
+        for idx, note in enumerate((arp[0], arp[2], arp[3])):
+            music.add(
+                base,
+                voice_string(midi_hz(note), ctx.bar_len + 0.8, 0.55, seed=bar * 7 + idx),
+                gain=0.13,
+                pan=-0.35 + 0.35 * idx,
+            )
+        music.add(base, voice_bass(midi_hz(arp[0] - 12), ctx.bar_len, 0.5, tone=0.28), gain=0.11)
+        for step, note in enumerate(arp):
+            music.add(
+                base + step * 0.5 * beat + ctx.jitter(0.01),
+                voice_piano(midi_hz(note), 1.4 * beat, 0.65 if step % 2 == 0 else 0.48, hard=0.6, seed=bar * 11 + step),
+                gain=0.22,
+                pan=-0.2 + 0.12 * (step % 4),
+            )
+        for beat_pos, note, dur_b in top_notes[bar % 4]:
+            music.add(
+                base + beat_pos * beat + ctx.jitter(0.01),
+                voice_piano(midi_hz(note), dur_b * beat * 1.25, 0.78, hard=0.72, seed=bar * 19 + note),
+                gain=0.24,
+                pan=0.1,
+            )
+        if bar % 4 == 0:
+            drums.add(base, drum_boom(rng, 0.65, length=1.4), gain=0.18)
+
+    return music, drums, fx
+
+
+def _build_brainrot_twist(ctx: Ctx) -> tuple[Bus, Bus, Bus]:
+    """Каноничный интрига-бит (как в @aiistori): тёмный грув, чёткий хэт/рим, минорный колокол."""
+    beat = ctx.beat_len
+    music, drums, fx = Bus(ctx.n), Bus(ctx.n), Bus(ctx.n)
+    rng = ctx.rng
+
+    chords = [
+        [45, 52, 57, 60],  # Am
+        [41, 48, 53, 57],  # F
+        [43, 50, 55, 59],  # G
+        [40, 47, 52, 55],  # Em
+    ]
+    bells = [
+        [(0.0, 69, 0.75), (1.0, 72, 0.75), (2.0, 76, 1.0), (3.0, 74, 0.75)],
+        [(0.0, 69, 0.75), (1.0, 72, 0.75), (2.0, 77, 1.0), (3.0, 76, 0.75)],
+        [(0.0, 67, 0.75), (1.0, 71, 0.75), (2.0, 74, 1.0), (3.0, 72, 0.75)],
+        [(0.0, 64, 0.75), (1.0, 67, 0.75), (2.0, 71, 1.0), (3.0, 69, 0.75)],
+    ]
+    kicks: list[float] = []
+    for bar in range(ctx.bars):
+        base = ctx.at(bar)
+        chord = chords[bar % 4]
+        for idx, note in enumerate(chord):
+            music.add(
+                base,
+                voice_pad(midi_hz(note), ctx.bar_len, 0.58, tone=0.45, seed=bar * 5 + idx),
+                gain=0.14,
+                pan=-0.3 + 0.2 * idx,
+            )
+        music.add(base, voice_808(midi_hz(chord[0] - 12), 2.0 * beat, 0.85, glide=0.05, seed=bar), gain=0.13)
+        music.add(base + 2.5 * beat, voice_808(midi_hz(chord[0] - 12), 1.5 * beat, 0.75, glide=0.04, seed=bar + 1), gain=0.12)
+        for beat_pos, vel in ((0.0, 0.95), (1.5, 0.7), (2.5, 0.88)):
+            moment = base + beat_pos * beat
+            drums.add(moment, drum_kick(rng, vel, tone=0.9, decay=0.15, length=0.4), gain=0.28)
+            kicks.append(moment)
+        for beat_pos in (1.0, 3.0):
+            drums.add(base + beat_pos * beat, drum_rim(rng, 0.72), gain=0.18, pan=-0.1)
+            drums.add(base + beat_pos * beat, drum_snare(rng, 0.65), gain=0.16, pan=0.05)
+        for step in range(8):
+            drums.add(base + step * 0.5 * beat, drum_hat(rng, 0.55 if step % 2 == 0 else 0.35), gain=0.12, pan=0.28)
+        for beat_pos, note, dur_b in bells[bar % 4]:
+            music.add(
+                base + beat_pos * beat,
+                voice_rhodes(midi_hz(note), dur_b * beat * 1.2, 0.7, seed=bar * 13 + note),
+                gain=0.22,
+                pan=-0.15,
+            )
+        if bar % 4 == 3:
+            fx.add(base + 2.5 * beat, noise_riser(rng, 1.5 * beat, lo=400.0, hi=6800.0), gain=0.11)
+
+    gain = sidechain_gain(ctx.n, kicks, depth=0.32, release=0.16)
+    music.data *= gain[:, None]
+    return music, drums, fx
+
+
+def _build_imperial_destiny(ctx: Ctx) -> tuple[Bus, Bus, Bus]:
+    """Каноничный мистический саспенс-фон (шкатулка/синт + глубокий саб-пульс для конфликтов)."""
+    beat = ctx.beat_len
+    music, drums, fx = Bus(ctx.n), Bus(ctx.n), Bus(ctx.n)
+    rng = ctx.rng
+
+    roots = [40, 40, 41, 40]  # E - E - F - E (фригийский саспенс)
+    motif = [76, 79, 77, 76, 72, 76, 74, 72]
+    for bar in range(ctx.bars):
+        base = ctx.at(bar)
+        root = roots[bar % 4]
+        music.add(base, voice_drone(midi_hz(root - 12), ctx.bar_len, 0.78, tone=0.38), gain=0.17)
+        music.add(base, voice_pad(midi_hz(root + 12), ctx.bar_len, 0.52, tone=0.32, seed=bar), gain=0.12, pan=-0.2)
+        for step in range(8):
+            note = motif[(bar * 2 + step) % len(motif)]
+            music.add(
+                base + step * 0.5 * beat + ctx.jitter(0.005),
+                voice_glock(midi_hz(note), 0.85 * beat, 0.58 if step % 2 == 0 else 0.4, seed=bar * 7 + step),
+                gain=0.16,
+                pan=-0.25 + 0.5 * (step % 2),
+            )
+        for beat_pos in (0.0, 2.0):
+            drums.add(base + beat_pos * beat, drum_taiko(rng, 0.78, length=0.95), gain=0.22)
+        if bar % 2 == 0:
+            drums.add(base, drum_boom(rng, 0.85, length=1.6), gain=0.24)
+        for step in range(8):
+            drums.add(base + step * 0.5 * beat, drum_tick(rng, 0.35 if step % 2 == 0 else 0.2), gain=0.1, pan=0.2)
+        if bar % 4 == 3:
+            fx.add(base + 2.0 * beat, noise_riser(rng, 2.0 * beat, lo=280.0, hi=5400.0), gain=0.12)
+
+    music.data = fft_delay(music.data, ctx.beat_len * 0.75, feedback=0.3, mix=0.22, damp_hz=3000.0)
+    return music, drums, fx
+
+
 TRACKS: list[TrackSpec] = [
     TrackSpec(
         id="lofi-chill", title="Ночной лоу-фай", mood="спокойное", bpm=70, bars=8, seed=101,
@@ -1801,6 +1939,30 @@ TRACKS: list[TrackSpec] = [
             ("high_shelf", 10000.0, 1.5, 0.7), ("peak", 3200.0, 1.0, 1.0)),
         reverb_seconds=1.9, reverb_tau=0.65, reverb_wet=0.3, drum_reverb_send=0.3,
         music_rms=-19.0, drums_rms=-19.5, fx_rms=-38.0,
+    ),
+    TrackSpec(
+        id="drama-guzheng", title="Дорама: грустное пианино", mood="дорама", bpm=84, bars=8, seed=909,
+        build=_build_drama_guzheng, width=1.22,
+        eq=(("low_shelf", 95.0, 0.8, 0.7), ("peak", 340.0, -1.5, 1.0),
+            ("peak", 2900.0, 1.2, 1.0), ("high_shelf", 8500.0, -1.0, 0.7)),
+        reverb_seconds=2.4, reverb_tau=0.85, reverb_wet=0.34, drum_reverb_send=0.35,
+        music_rms=-19.5, drums_rms=-22.0, fx_rms=-40.0,
+    ),
+    TrackSpec(
+        id="brainrot-twist", title="Дорама: интрига-бит", mood="интрига", bpm=116, bars=8, seed=1010,
+        build=_build_brainrot_twist, width=1.16, drive=1.15,
+        eq=(("low_shelf", 75.0, 1.2, 0.7), ("peak", 280.0, -1.8, 1.0),
+            ("peak", 3100.0, 1.2, 1.0), ("high_shelf", 9000.0, 0.5, 0.7)),
+        reverb_seconds=1.8, reverb_tau=0.65, reverb_wet=0.28, drum_reverb_send=0.3,
+        music_rms=-19.5, drums_rms=-20.0, fx_rms=-38.0,
+    ),
+    TrackSpec(
+        id="imperial-destiny", title="Дорама: саспенс-мистика", mood="саспенс", bpm=92, bars=8, seed=1111,
+        build=_build_imperial_destiny, width=1.24,
+        eq=(("low_shelf", 80.0, 1.0, 0.7), ("peak", 380.0, -1.2, 0.9),
+            ("high_shelf", 8500.0, 1.0, 0.7)),
+        reverb_seconds=3.1, reverb_tau=1.05, reverb_wet=0.38, drum_reverb_send=0.45,
+        music_rms=-19.0, drums_rms=-22.5, fx_rms=-38.0,
     ),
 ]
 

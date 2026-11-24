@@ -36,10 +36,11 @@ OVERLAP_EPS = 0.05
 
 @dataclass
 class LLMConfig:
-    provider: str = "deepseek"          # deepseek | openrouter | gemini | groq | ollama | custom
+    provider: str = "deepseek"          # deepseek | openrouter | gemini | groq | ollama | custom | chatgpt_sub | google_sub
     model: str = "deepseek-flash"
     api_key: str = ""
     base_url: str = ""                  # переопределение, иначе дефолт провайдера
+    account_id: str = ""                # для chatgpt_sub / google_sub
     temperature: float = 1.1
     fallback: bool = True               # при падении основного идти по цепочке
     keys: dict = field(default_factory=dict)   # ключи по провайдерам {"openrouter": "..."}
@@ -146,6 +147,41 @@ PROVIDERS: tuple[dict, ...] = (
 )
 _BY_ID = {item["id"]: item for item in PROVIDERS}
 
+# Провайдеры по подписке (аккаунты без API-ключа): живут отдельно от PROVIDERS,
+# чтобы не менять контракт available_providers() для существующих клиентов/тестов.
+ACCOUNT_PROVIDERS: tuple[dict, ...] = (
+    {
+        "id": "chatgpt_sub",
+        "label": "ChatGPT (подписка / аккаунт)",
+        "kind": "account",
+        "account_provider": "chatgpt",
+        "base_url": "https://chatgpt.com",
+        "needs_key": False,
+        "key_url": "",
+        "note": "Вход в аккаунт ChatGPT Plus/Pro (OAuth или браузер), API-ключ не нужен.",
+        "models": (
+            {"id": "gpt-5.1-codex-mini", "label": "GPT-5.1 Mini (подписка)", "free": False},
+            {"id": "gpt-5.1", "label": "GPT-5.1 (подписка)", "free": False},
+            {"id": "gpt-4o", "label": "GPT-4o (веб-сессия)", "free": False},
+        ),
+    },
+    {
+        "id": "google_sub",
+        "label": "Google Gemini (аккаунт / AI Pro)",
+        "kind": "account",
+        "account_provider": "google",
+        "base_url": "https://gemini.google.com",
+        "needs_key": False,
+        "key_url": "",
+        "note": "Вход в Google-аккаунт через встроенный браузер (gemini.google.com), без API-ключа.",
+        "models": (
+            {"id": "gemini-web", "label": "Gemini Web (аккаунт Google)", "free": True},
+        ),
+    },
+)
+_ACCOUNT_BY_ID = {item["id"]: item for item in ACCOUNT_PROVIDERS}
+_ALL_BY_ID = {**_BY_ID, **_ACCOUNT_BY_ID}
+
 
 def _default_model(spec: dict) -> str:
     """Модель по умолчанию: у custom моделей нет, ему задаём явно default_model."""
@@ -184,13 +220,29 @@ def available_providers() -> list[dict]:
     return result
 
 
+def account_providers() -> list[dict]:
+    """Провайдеры по подписке / входу в аккаунт без API-ключа."""
+    return [
+        {
+            "id": spec["id"],
+            "label": spec["label"],
+            "account_provider": spec["account_provider"],
+            "models": [dict(model) for model in spec["models"]],
+            "needs_key": False,
+            "key_url": "",
+            "note": spec["note"],
+        }
+        for spec in ACCOUNT_PROVIDERS
+    ]
+
+
 def resolve(provider: str, model: str = "") -> tuple[str, str, str]:
     """provider, model, base_url по умолчанию для провайдера."""
     provider_id = (provider or "").strip().lower()
-    spec = _BY_ID.get(provider_id)
+    spec = _ALL_BY_ID.get(provider_id)
     if spec is None:
         raise LLMError(
-            f"Неизвестный провайдер «{provider}». Доступные: {', '.join(_BY_ID)}"
+            f"Неизвестный провайдер «{provider}». Доступные: {', '.join(_ALL_BY_ID)}"
         )
     chosen = (model or "").strip() or _default_model(spec)
     return provider_id, chosen, spec["base_url"]
@@ -202,7 +254,14 @@ def ping(cfg: LLMConfig, timeout: float = 20.0) -> tuple[bool, str]:
         provider_id, model, base_url = resolve(cfg.provider, cfg.model)
     except LLMError as exc:
         return False, str(exc)
-    spec = _BY_ID[provider_id]
+    spec = _ALL_BY_ID[provider_id]
+    if spec["kind"] == "account":
+        from . import accounts
+        acc = accounts.active_account(spec["account_provider"], cfg.account_id)
+        if not acc:
+            return False, f"{spec['label']}: нет подключённого аккаунта — войди в Настройках"
+        return accounts.test_account(acc["id"], model=model)
+
     api_key = _key_for(cfg, provider_id)
     if spec["needs_key"] and not api_key:
         return False, f"{spec['label']}: не указан API-ключ. Где взять: {spec['key_url']}"
@@ -214,6 +273,7 @@ def ping(cfg: LLMConfig, timeout: float = 20.0) -> tuple[bool, str]:
         "model": model,
         "base_url": base_url,
         "api_key": api_key,
+        "account_id": cfg.account_id,
     }
     try:
         if spec["kind"] == "gemini":
@@ -256,9 +316,17 @@ def pick_moments(
     errors: list[str] = []
 
     for candidate in chain:
-        spec = _BY_ID[candidate["provider"]]
+        spec = _ALL_BY_ID[candidate["provider"]]
         label = spec["label"]
-        if spec["needs_key"] and not candidate["api_key"]:
+        if spec["kind"] == "account":
+            from . import accounts
+            acc = accounts.active_account(spec["account_provider"], candidate.get("account_id") or "")
+            if not acc:
+                message = f"{label}: нет подключённого аккаунта — провайдер пропущен"
+                log(f"LLM: {message}")
+                errors.append(message)
+                continue
+        elif spec["needs_key"] and not candidate["api_key"]:
             message = f"{label}: нет API-ключа — провайдер пропущен"
             log(f"LLM: {message}")
             errors.append(message)
@@ -271,7 +339,7 @@ def pick_moments(
                 duration=total, strict=attempt > 0,
             )
             try:
-                text = _call_provider(candidate, prompt, cfg)
+                text = _call_provider(candidate, prompt, cfg, log=log)
             except LLMError as exc:
                 log(f"LLM: {model_label} — {exc}")
                 errors.append(f"{model_label}: {exc}")
@@ -291,10 +359,10 @@ def pick_moments(
             log(f"LLM: выбрано {len(moments)} моментов через {model_label}")
             return moments
 
-    hint = "Проверь API-ключ, баланс на счёте провайдера и сеть (или запусти ollama локально)."
+    hint = "Проверь аккаунт/API-ключ, баланс на счёте провайдера и сеть (или запусти ollama локально)."
     if not errors:
         raise LLMError(
-            "Ни один LLM-провайдер не настроен: добавь API-ключ в Настройках. " + hint
+            "Ни один LLM-провайдер не настроен: подключи аккаунт или добавь API-ключ в Настройках. " + hint
         )
     tail = "\n".join(f"- {item}" for item in errors[-5:])
     raise LLMError(f"Ни один провайдер не отдал моменты:\n{tail}\n{hint}")
@@ -316,9 +384,9 @@ def _key_for(cfg: LLMConfig, provider_id: str) -> str:
 def _candidate_chain(cfg: LLMConfig) -> list[dict]:
     """Основной провайдер + (если fallback) остальные по FALLBACK_ORDER."""
     primary = (cfg.provider or "deepseek").strip().lower()
-    if primary not in _BY_ID:
+    if primary not in _ALL_BY_ID:
         raise LLMError(
-            f"Неизвестный провайдер «{cfg.provider}». Доступные: {', '.join(_BY_ID)}"
+            f"Неизвестный провайдер «{cfg.provider}». Доступные: {', '.join(_ALL_BY_ID)}"
         )
     order = (primary,)
     if cfg.fallback:
@@ -326,7 +394,7 @@ def _candidate_chain(cfg: LLMConfig) -> list[dict]:
 
     chain: list[dict] = []
     for provider_id in order:
-        spec = _BY_ID[provider_id]
+        spec = _ALL_BY_ID[provider_id]
         is_primary = provider_id == primary
         model = ""
         if is_primary:
@@ -339,6 +407,7 @@ def _candidate_chain(cfg: LLMConfig) -> list[dict]:
             # base_url из настроек имеет смысл только для основного провайдера
             "base_url": ((cfg.base_url or "").strip() if is_primary else "") or spec["base_url"],
             "api_key": _key_for(cfg, provider_id),
+            "account_id": cfg.account_id if is_primary else "",
         })
     return chain
 
@@ -358,7 +427,20 @@ def _post(label: str, url: str, *, headers: dict, payload: dict, params: dict | 
 
 
 def _call_provider(candidate: dict, prompt: str, cfg: LLMConfig,
-                   *, timeout: float = TIMEOUT, max_tokens: int = MAX_OUTPUT_TOKENS) -> str:
+                   *, timeout: float = TIMEOUT, max_tokens: int = MAX_OUTPUT_TOKENS,
+                   log: Callable[[str], None] = print) -> str:
+    if candidate["kind"] == "account":
+        from . import accounts
+        spec = _ALL_BY_ID[candidate["provider"]]
+        acc = accounts.active_account(spec["account_provider"], candidate.get("account_id") or "")
+        if not acc:
+            raise LLMError(f"{candidate['label']}: нет подключённого аккаунта")
+        try:
+            return accounts.query_account(
+                acc, prompt, system=_SYSTEM, model=candidate["model"], timeout=timeout, log=log,
+            )
+        except accounts.AccountError as exc:
+            raise LLMError(str(exc)) from exc
     if candidate["kind"] == "gemini":
         return _call_gemini(candidate, prompt, cfg, timeout=timeout, max_tokens=max_tokens)
     return _call_openai(candidate, prompt, cfg, timeout=timeout, max_tokens=max_tokens)
@@ -813,3 +895,70 @@ def _source_duration(segments: list[tuple[float, float, str]], duration: float) 
         except (TypeError, ValueError, IndexError):
             continue
     return max(ends) if ends else 0.0
+
+
+def rewrite_for_brainrot(
+    segments: list[tuple[float, float, str]],
+    *,
+    cfg: LLMConfig,
+    target_lang: str = "ru",
+    log: Callable[[str], None] = print,
+) -> list[tuple[float, float, str]]:
+    """Переписывает/переводит реплики в формат вирусного пересказа китайской дорамы с сохранением таймкодов."""
+    if not segments:
+        return []
+    indexed = [
+        (i, float(s), float(e), " ".join(str(t or "").split()))
+        for i, (s, e, t) in enumerate(segments)
+        if str(t or "").strip()
+    ]
+    if not indexed:
+        return []
+
+    chain = _candidate_chain(cfg)
+    lang_label = "русском" if target_lang == "ru" else "английском"
+    lines_in = []
+    for idx, s, e, txt in indexed[:140]:
+        max_words = max(4, int(round(max(1.0, e - s) * 2.8)))
+        lines_in.append(f"{idx}|[{s:.1f}-{e:.1f}s, ~{max_words}сл]|{txt[:180]}")
+
+    prompt = (
+        f"Перепиши и переведи реплики ниже на {lang_label} язык в стиле вирусного пересказа китайской ИИ-дорамы / брейнрот-истории.\n"
+        "Правила:\n"
+        "1. Первая реплика — жёсткий интригующий хук (например: 'Никто не верил, что обычный курьер окажется...').\n"
+        "2. Стиль: короткие рубленые фразы, драма, накал, сюжетные повороты, без воды.\n"
+        "3. Строго укладывайся в бюджет слов (~сл) для каждой строки, чтобы диктор успел прочитать в тайминг.\n"
+        '4. Верни ТОЛЬКО JSON: {"lines": [{"i": 0, "text": "..."}]}\n\n'
+        + "\n".join(lines_in)
+    )
+
+    for candidate in chain:
+        spec = _ALL_BY_ID[candidate["provider"]]
+        if spec["kind"] == "account":
+            from . import accounts
+            if not accounts.active_account(spec["account_provider"], candidate.get("account_id") or ""):
+                continue
+        elif spec["needs_key"] and not candidate["api_key"]:
+            continue
+        try:
+            raw = _call_provider(candidate, prompt, cfg, log=log)
+            data = _extract_json(raw)
+            rows = data.get("lines") if isinstance(data, dict) else (data if isinstance(data, list) else None)
+            if not isinstance(rows, list):
+                continue
+            by_idx = {}
+            for row in rows:
+                if isinstance(row, dict) and "i" in row and row.get("text"):
+                    try:
+                        by_idx[int(row["i"])] = " ".join(str(row["text"]).split())
+                    except (TypeError, ValueError):
+                        continue
+            if by_idx:
+                out = [(s, e, by_idx.get(i, txt)) for i, s, e, txt in indexed]
+                log(f"LLM: пересказ дорамы готов ({len(by_idx)}/{len(indexed)} реплик)")
+                return out
+        except Exception as exc:
+            log(f"LLM пересказ ({candidate['label']}): {str(exc)[:140]}")
+            continue
+
+    raise LLMError("Не удалось переписать текст через LLM для режима дорамы")

@@ -502,6 +502,99 @@ def doh_fallback() -> _DohFallback:
 
 # ---------------------------------------------------------------- публичный API
 
+def _network_prefs() -> tuple[str, bool, str]:
+    """Читает proxy, force_ipv4 и youtube_cookies из settings.json без жёсткой связки с тестами."""
+    try:
+        from . import settings as S
+        net = (S.load().get("network") or {})
+        proxy = str(net.get("proxy") or "").strip()
+        force_ipv4 = bool(net.get("force_ipv4", True))
+        cookies_mode = str(net.get("youtube_cookies") or "auto").strip().lower()
+        return proxy, force_ipv4, cookies_mode
+    except Exception:
+        return "", True, "auto"
+
+
+def _youtube_cookies_file() -> str:
+    try:
+        from . import accounts, settings as S
+        existing = S.DATA_DIR / "youtube_cookies.txt"
+        if existing.is_file() and existing.stat().st_size > 32:
+            return str(existing)
+        exported = accounts.export_youtube_cookies_txt()
+        if exported and exported.is_file():
+            return str(exported)
+    except Exception:
+        pass
+    return ""
+
+
+def _is_retryable_yt_error(message: str) -> bool:
+    """Определяет сбои сети/TLS/zapret/YouTube-клиента, которые лечатся ретраем с другой стратегией."""
+    low = (message or "").lower()
+    permanent = (
+        "private video", "this video is private", "access restricted",
+        "members-only", "video unavailable", "has been removed",
+        "this live stream", "is live", "unsupported url", _CANCEL_MARK.lower(),
+    )
+    if any(p in low for p in permanent):
+        return False
+    transient = (
+        "timed out", "timeout", "connection", "ssl", "eof", "reset",
+        "403", "forbidden", "429", "sign in to confirm", "bot", "cookies",
+        "requested format is not available", "unable to download", "getaddrinfo",
+        "failed to resolve", "fragment", "empty", "http error 5",
+    )
+    return any(t in low for t in transient)
+
+
+def _youtube_strategies(base_opts: dict, *, is_download: bool, cookies_mode: str) -> list[dict]:
+    """Набор стратегий для стабилизации YouTube (IPv4, сменяемые player_client, cookies)."""
+    strategies: list[dict] = []
+    # Попытка 1: штатный набор (совместим с ожидаемыми опциями тестов).
+    strategies.append(dict(base_opts))
+
+    # Попытка 2: IPv4 + Android/Web клиенты + сниженная параллельность фрагментов (меньше RST от zapret).
+    s2 = dict(base_opts)
+    s2["force_ipv4"] = True
+    s2["extractor_args"] = {"youtube": {"player_client": ["android", "web"]}}
+    s2["extractor_retries"] = 4
+    if is_download:
+        s2["concurrent_fragment_downloads"] = 4
+        s2["retries"] = 8
+        s2["fragment_retries"] = 8
+    strategies.append(s2)
+
+    # Попытка 3: TV/iOS клиенты + сохранённые cookies Google-аккаунта (если есть).
+    s3 = dict(base_opts)
+    s3["force_ipv4"] = True
+    s3["extractor_args"] = {"youtube": {"player_client": ["tv", "ios"]}}
+    s3["extractor_retries"] = 4
+    if is_download:
+        s3["concurrent_fragment_downloads"] = 2
+        s3["retries"] = 8
+        s3["fragment_retries"] = 8
+    if cookies_mode != "none":
+        cf = _youtube_cookies_file()
+        if cf:
+            s3["cookiefile"] = cf
+    strategies.append(s3)
+
+    # Попытка 4: один поток без многопоточного резания фрагментов — максимально щадящий режим для VPN/zapret.
+    s4 = dict(base_opts)
+    s4["force_ipv4"] = True
+    s4["extractor_args"] = {"youtube": {"player_client": ["mweb", "web_embedded"]}}
+    s4["extractor_retries"] = 5
+    if is_download:
+        s4["concurrent_fragment_downloads"] = 1
+        s4["retries"] = 10
+        s4["fragment_retries"] = 10
+    if cookies_mode != "none" and "cookiefile" in s3:
+        s4["cookiefile"] = s3["cookiefile"]
+    strategies.append(s4)
+    return strategies
+
+
 def probe_url(url: str) -> dict:
     """Метаданные видео без скачивания.
 
@@ -509,8 +602,30 @@ def probe_url(url: str) -> dict:
     `source` — площадка: youtube / rutube / vk.
     """
     ref = parse_url(url)
+    proxy, force_ipv4, cookies_mode = _network_prefs()
+    base = _base_options()
+    if proxy:
+        base["proxy"] = proxy
+
     with doh_fallback():
-        info = _extract_info(ref.url, _base_options(), source=ref.source)
+        if ref.source == "youtube":
+            info = None
+            last_exc: Exception | None = None
+            for idx, opts in enumerate(_youtube_strategies(base, is_download=False, cookies_mode=cookies_mode)):
+                if idx > 0 and force_ipv4:
+                    opts["force_ipv4"] = True
+                try:
+                    info = _extract_info(ref.url, opts, source=ref.source)
+                    last_exc = None
+                    break
+                except RuntimeError as exc:
+                    last_exc = exc
+                    if not _is_retryable_yt_error(str(exc)):
+                        raise
+            if info is None and last_exc is not None:
+                raise last_exc
+        else:
+            info = _extract_info(ref.url, base, source=ref.source)
     _reject_playlist(info)
     height = int(info.get("height") or 0)
     if not height:
@@ -544,10 +659,35 @@ def download(
     if _is_cancelled(cancel):
         raise DownloadCancelled("Скачивание отменено.")
 
+    proxy, force_ipv4, cookies_mode = _network_prefs()
+
     # DoH-контекст один на весь вызов: кэш резолва переживает оба обращения к yt-dlp.
     with doh_fallback():
-        # Сначала узнаём title: имя файла с slug строится из него, а не из сырого заголовка.
-        info = _extract_info(ref.url, _base_options(), cancel=cancel, source=ref.source)
+        probe_opts = _base_options()
+        if proxy:
+            probe_opts["proxy"] = proxy
+        info = None
+        last_probe_err: Exception | None = None
+        strategies = (
+            _youtube_strategies(probe_opts, is_download=False, cookies_mode=cookies_mode)
+            if ref.source == "youtube" else [probe_opts]
+        )
+        for idx, opts in enumerate(strategies):
+            if idx > 0 and force_ipv4:
+                opts["force_ipv4"] = True
+            try:
+                info = _extract_info(ref.url, opts, cancel=cancel, source=ref.source)
+                last_probe_err = None
+                break
+            except DownloadCancelled:
+                raise
+            except RuntimeError as exc:
+                last_probe_err = exc
+                if not _is_retryable_yt_error(str(exc)):
+                    raise
+        if info is None and last_probe_err is not None:
+            raise last_probe_err
+
         _reject_playlist(info)
         if info.get("is_live"):
             raise RuntimeError("Это прямой эфир — дождись окончания и скачай запись.")
@@ -566,27 +706,43 @@ def download(
             "noplaylist": True,
             "overwrites": True,
             "progress_hooks": [_make_progress_hook(on_progress, cancel)],
-            # превью пригодится в UI; если площадка его не отдаст — просто не будет файла
             "writethumbnail": True,
             # Скорость: тянем фрагменты DASH/HLS параллельно и переживаем обрывы.
             "concurrent_fragment_downloads": 8,
             "retries": 5,
             "fragment_retries": 5,
-            # mp4 обязателен для рендера; remux не перекодирует, только меняет контейнер
             "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
         })
+        if proxy:
+            options["proxy"] = proxy
 
-        try:
-            with yt_dlp.YoutubeDL(options) as ydl:
-                final_info = ydl.extract_info(ref.url, download=True)
-        except Exception as exc:
-            # Держим только текст ошибки: traceback ссылается на открытые потоки
-            # загрузчика, и пока он жив, Windows не даёт удалить .part.
-            failure: str | None = str(exc) or exc.__class__.__name__
-            cancelled_by_hook = _is_cancelled(cancel) or _CANCEL_MARK in failure
-        else:
+        dl_strategies = (
+            _youtube_strategies(options, is_download=True, cookies_mode=cookies_mode)
+            if ref.source == "youtube" else [options]
+        )
+
+        final_info = None
+        failure: str | None = None
+        cancelled_by_hook = False
+        for idx, dl_opts in enumerate(dl_strategies):
+            if idx > 0 and force_ipv4:
+                dl_opts["force_ipv4"] = True
             failure = None
             cancelled_by_hook = False
+            try:
+                with yt_dlp.YoutubeDL(dl_opts) as ydl:
+                    final_info = ydl.extract_info(ref.url, download=True)
+                break
+            except Exception as exc:
+                failure = str(exc) or exc.__class__.__name__
+                cancelled_by_hook = _is_cancelled(cancel) or _CANCEL_MARK in failure
+                if cancelled_by_hook:
+                    break
+                if idx + 1 < len(dl_strategies) and _is_retryable_yt_error(failure):
+                    _cleanup(outdir, outbase)
+                    time.sleep(0.6)
+                    continue
+                break
 
         if failure is not None:
             _cleanup(outdir, outbase)

@@ -38,4 +38,5 @@ installer/*.log
 installer/*.msi
 tools/wix/
 
-# Тестовые данные упакованного приложения.userdata/
+# Тестовые данные упакованного приложения
+.userdata/

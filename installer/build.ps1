@@ -33,7 +33,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '1.0.0',
+    [string]$Version = '1.1.0',
     [string]$DistDir = '',
     [switch]$SkipIcon
 )
@@ -275,6 +275,8 @@ try {
         '-cultures:ru-RU',
         '-sice:ICE57',
         '-sice:ICE61',
+        '-sice:ICE64',
+        '-sice:ICE91',
         '-out', $stageMsi,
         $productObj,
         $filesObj
@@ -293,9 +295,21 @@ Write-Log "MSI перенесён: $stageMsi -> $outMsi"
 if (-not (Test-Path $outMsi)) { Fail "MSI не создан: $outMsi" }
 $msiItem = Get-Item -LiteralPath $outMsi
 $hash = (Get-FileHash -LiteralPath $outMsi -Algorithm SHA256).Hash
+Set-Content -LiteralPath ($outMsi + '.sha256') -Value ("{0}  {1}" -f $hash.ToLowerInvariant(), $msiItem.Name) -Encoding ASCII
 Write-Log ("MSI: {0}" -f $msiItem.FullName) 'OK'
 Write-Log ("     размер: {0} МБ, изменение: {1}" -f [math]::Round($msiItem.Length / 1MB, 1), $msiItem.LastWriteTime)
 Write-Log ("     SHA256: {0}" -f $hash)
 Get-MsiSummary -Path $outMsi
+
+# Портативный ZIP (браузеры не блокируют скачивание в отличие от неподписанного .msi)
+$outZip = Join-Path $outDir ("Cutter-{0}-windows-x64.zip" -f $Version)
+if (Test-Path $outZip) { Remove-Item -LiteralPath $outZip -Force }
+Write-Log ("Собираю portable ZIP: {0}" -f $outZip)
+Compress-Archive -Path $DistDir -DestinationPath $outZip -CompressionLevel Optimal -Force
+$zipItem = Get-Item -LiteralPath $outZip
+$zipHash = (Get-FileHash -LiteralPath $outZip -Algorithm SHA256).Hash
+Set-Content -LiteralPath ($outZip + '.sha256') -Value ("{0}  {1}" -f $zipHash.ToLowerInvariant(), $zipItem.Name) -Encoding ASCII
+Write-Log ("ZIP: {0} ({1} МБ)" -f $zipItem.FullName, [math]::Round($zipItem.Length / 1MB, 1)) 'OK'
+
 $sw.Stop()
 Write-Log ("=== готово за {0:ss\.ff} с ===" -f $sw.Elapsed) 'OK'

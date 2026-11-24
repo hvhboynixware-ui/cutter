@@ -61,11 +61,20 @@ namespace Cutter
             }
         }
 
+        public static string WindowDataDir()
+        {
+            var overrideDir = Environment.GetEnvironmentVariable("CUTTER_DATA_DIR");
+            var root = !string.IsNullOrWhiteSpace(overrideDir)
+                ? overrideDir.Trim()
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cutter");
+            return Path.Combine(root, "window");
+        }
+
         public static void Log(string message, bool error = false)
         {
             try
             {
-                var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "logs");
+                var dir = Path.Combine(WindowDataDir(), "logs");
                 Directory.CreateDirectory(dir);
                 File.AppendAllText(Path.Combine(dir, "window.log"),
                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + (error ? "ERROR " : "") + message + Environment.NewLine,
@@ -291,7 +300,7 @@ namespace Cutter
                 ApplyDarkTitleBar();
                 try
                 {
-                    var dataDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "webview2");
+                    var dataDir = Path.Combine(Program.WindowDataDir(), "webview2");
                     Directory.CreateDirectory(dataDir);
                     var env = await CoreWebView2Environment.CreateAsync(null, dataDir, null);
                     await _web.EnsureCoreWebView2Async(env);
@@ -348,7 +357,7 @@ namespace Cutter
 
         private static string BoundsFile
         {
-            get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "window.bounds"); }
+            get { return Path.Combine(Program.WindowDataDir(), "window.bounds"); }
         }
 
         /// <summary>Помнит размер и позицию окна между запусками.</summary>

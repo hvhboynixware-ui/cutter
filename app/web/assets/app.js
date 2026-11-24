@@ -15,21 +15,38 @@ const el = {
   chips: {
     model: $('#chip-model'),
     key: $('#chip-key'),
+    encoder: $('#chip-encoder'),
     browser: $('#chip-browser'),
   },
   drop: $('#dropzone'),
   fileInput: $('#file-input'),
   ytUrl: $('#yt-url'),
   ytBtn: $('#yt-btn'),
+  modeSeg: $('#mode-seg'),
+  modeHint: $('#mode-hint'),
+  brainrotPanel: $('#brainrot-panel'),
+  voiceSelect: $('#voice-select'),
+  origVol: $('#orig-vol'),
+  origVolLabel: $('#orig-vol-label'),
+  brainrotRewrite: $('#brainrot-rewrite'),
+  dramaMusicPills: $('#drama-music-pills'),
   clipsSeg: $('#clips-seg'),
+  clipsAllBtn: $('#clips-all-btn'),
+  clipsCustom: $('#clips-custom'),
   durSeg: $('#dur-seg'),
+  durMin: $('#dur-min'),
+  durMax: $('#dur-max'),
+  subtitlesToggle: $('#subtitles-toggle'),
   styleSeg: $('#style-seg'),
+  framingSeg: $('#framing-seg'),
   fxSeg: $('#fx-seg'),
   musicSelect: $('#music-select'),
   musicHint: $('#music-hint'),
   volRow: $('#vol-row'),
   musicVolume: $('#music-volume'),
   volLabel: $('#vol-label'),
+  integrationSelect: $('#integration-select'),
+  openAdModal: $('#open-ad-modal'),
   protectSeg: $('#protect-seg'),
   stats: $('#stats'),
   statCount: $('#stat-count'),
@@ -55,6 +72,8 @@ const el = {
   stripMarks: $('#strip-marks'),
   stripEnd: $('#strip-end'),
   openFolder: $('#open-folder'),
+  applyAdResults: $('#apply-ad-results'),
+  uploadAllResults: $('#upload-all-results'),
   pickList: $('#pick-list'),
   uploadSource: $('#upload-source'),
   platforms: $('#platforms'),
@@ -71,18 +90,31 @@ const el = {
   history: $('#history'),
   historyRefresh: $('#history-refresh'),
   outdirLink: $('#outdir-link'),
+  loginChatgptOauth: $('#login-chatgpt-oauth'),
+  loginChatgptBrowser: $('#login-chatgpt-browser'),
+  loginGoogleBrowser: $('#login-google-browser'),
+  accountsList: $('#accounts-list'),
   llmProvider: $('#llm-provider'),
+  llmAccountRow: $('#llm-account-row'),
+  llmAccount: $('#llm-account'),
   llmModel: $('#llm-model'),
   llmModelCustom: $('#llm-model-custom'),
   llmBaseRow: $('#llm-base-row'),
   llmBaseUrl: $('#llm-base-url'),
+  llmKeyRow: $('#llm-key-row'),
   llmKey: $('#llm-key'),
   llmHint: $('#llm-hint'),
+  llmTestAccountRow: $('#llm-test-account-row'),
+  testAccountBtn: $('#test-account-btn'),
   llmFallback: $('#llm-fallback'),
   testKey: $('#test-key'),
   models: $('#models'),
   outdir: $('#outdir'),
   language: $('#language'),
+  encoderSelect: $('#encoder-select'),
+  netProxy: $('#net-proxy'),
+  netIpv4: $('#net-ipv4'),
+  netCookies: $('#net-cookies'),
   saveSettings: $('#save-settings'),
   aboutText: $('#about-text'),
   aboutStack: $('#about-stack'),
@@ -91,30 +123,72 @@ const el = {
   modalTitle: $('#modal-title'),
   modalHook: $('#modal-hook'),
   modalClose: $('#modal-close'),
+  adModal: $('#ad-modal'),
+  adModalClose: $('#ad-modal-close'),
+  adFile: $('#ad-file'),
+  adName: $('#ad-name'),
+  adMode: $('#ad-mode'),
+  adPosition: $('#ad-position'),
+  adHookRow: $('#ad-hook-row'),
+  adHookSec: $('#ad-hook-sec'),
+  adScaleRow: $('#ad-scale-row'),
+  adScale: $('#ad-scale'),
+  adTimeRow: $('#ad-time-row'),
+  adStartSec: $('#ad-start-sec'),
+  adDurSec: $('#ad-dur-sec'),
+  adSaveBtn: $('#ad-save-btn'),
+  adApplyNowBtn: $('#ad-apply-now-btn'),
+  adLibrary: $('#ad-library'),
+  editModal: $('#edit-modal'),
+  editModalClose: $('#edit-modal-close'),
+  editTitle: $('#edit-title'),
+  editHook: $('#edit-hook'),
+  editTags: $('#edit-tags'),
+  editStart: $('#edit-start'),
+  editEnd: $('#edit-end'),
+  editSaveMeta: $('#edit-save-meta'),
+  editRecutBtn: $('#edit-recut-btn'),
   toasts: $('#toasts'),
 };
 
-const STYLE_LABELS = { classic: 'Классика', bold: 'Жирный', clean: 'Чистый', neon: 'Неон' };
+const STYLE_LABELS = { classic: 'Классика', bold: 'Жирный', clean: 'Чистый', neon: 'Неон', drama: 'Дорама' };
+const MODE_HINTS = {
+  moments: 'ИИ выберет самые цепляющие моменты с хуком в начале.',
+  parts: 'Умная последовательная нарезка на части по паузам и границам фраз (без ИИ-отбора).',
+  brainrot: 'Китайская история: пересказ + полная нейро-озвучка в тайминг + каноничный фон дорамы.',
+};
 
 const state = {
   screen: 'cut',
   file: null,
+  mode: 'moments',
   clipCount: 5,
   dur: [18, 60],
   style: 'classic',
+  framing: 'auto',
+  subtitles: true,
+  encoder: 'auto',
   effect: 'none',
   protection: 'off',
   music: 'none',
   musicVolume: 18,
-  looks: { effects: [], music: [] },
+  voice: 'dmitry_drama',
+  origAudioVol: 8,
+  brainrotRewrite: true,
+  integrationId: '',
+  integrations: [],
+  looks: { effects: [], music: [], voices: [], encoder: 'cpu' },
   jobId: null,
   job: null,
   pollTimer: null,
   clipList: [],
+  editingClipId: null,
   selected: new Set(),
   platforms: new Set(['tiktok']),
   engine: 'plain',
   providers: [],
+  accountProviders: [],
+  accounts: [],
   settings: null,
   health: null,
   keyDirty: false,
@@ -187,7 +261,7 @@ const SCREEN_META = {
   cut: ['Нарезка', 'Длинное видео → вертикальные клипы с субтитрами'],
   upload: ['Загрузка', 'Публикация клипов через браузер с сохранёнными сессиями'],
   history: ['История', 'Что уже нарезано и загружено'],
-  settings: ['Настройки', 'Модели, ключи, папки'],
+  settings: ['Настройки', 'Аккаунты с подпиской, модели, сеть и ускорение'],
 };
 
 function go(screen) {
@@ -205,6 +279,7 @@ function go(screen) {
   el.screens.scrollTop = 0;
   if (screen === 'history') loadHistory();
   if (screen === 'upload') ensureUploadScreen();
+  if (screen === 'settings') refreshAccounts();
 }
 
 $$('.rail__btn').forEach((btn) => btn.addEventListener('click', () => go(btn.dataset.nav)));
@@ -213,11 +288,24 @@ document.addEventListener('click', (event) => {
   if (goto) go(goto.dataset.goto);
 });
 
-/* ---------------------------------------------------------------- статус */
+/* ---------------------------------------------------------------- статус и чипы */
 
 function setStatus(kind, text) {
   el.dots.status.className = `dot ${kind ? 'is-' + kind : ''}`;
   el.dots.text.textContent = text;
+}
+
+function isAccountProvider(id) {
+  return id === 'chatgpt_sub' || id === 'google_sub';
+}
+
+function hasActiveAuth() {
+  const provider = state.settings?.llm?.provider || '';
+  if (isAccountProvider(provider)) {
+    const want = provider === 'chatgpt_sub' ? 'chatgpt' : 'google';
+    return state.accounts.some((acc) => acc.provider === want && acc.status === 'ready');
+  }
+  return Boolean(state.keyDirty ? el.llmKey.value.trim() : state.settings?.llm?.api_key);
 }
 
 function renderChips(health) {
@@ -229,12 +317,20 @@ function renderChips(health) {
   el.chips.model.textContent = `${provider} / ${model}`;
   el.chips.model.className = 'chip chip--ghost';
 
-  const hasKey = Boolean(state.keyDirty ? el.llmKey.value.trim() : settings?.llm?.api_key);
+  const authOk = hasActiveAuth();
   const keyChip = el.chips.key;
-  keyChip.textContent = hasKey ? 'ключ есть' : 'ключ не задан';
-  keyChip.className = `chip ${hasKey ? 'is-ok' : 'is-bad'}`;
+  if (isAccountProvider(provider)) {
+    keyChip.textContent = authOk ? 'подписка активна' : 'нужен вход в аккаунт';
+  } else {
+    keyChip.textContent = authOk ? 'ключ есть' : 'ключ или аккаунт';
+  }
+  keyChip.className = `chip chip--btn ${authOk ? 'is-ok' : 'is-bad'}`;
 
   if (current) {
+    const enc = (current.encoder || state.looks.encoder || 'cpu').toUpperCase();
+    el.chips.encoder.textContent = enc === 'CPU' ? 'рендер: CPU' : `GPU: ${enc}`;
+    el.chips.encoder.className = `chip ${enc === 'CPU' ? 'chip--ghost' : 'is-ok'}`;
+
     el.chips.browser.textContent = current.browser ? 'браузер есть' : 'нужен Chrome/Edge';
     el.chips.browser.className = `chip ${current.browser ? 'is-ok' : 'is-bad'}`;
   }
@@ -242,17 +338,16 @@ function renderChips(health) {
   renderSetup();
 }
 
-/** Подсказки первого запуска: модель и ключ. */
 function renderSetup() {
-  const setup = document.querySelector('#setup');
+  const setup = $('#setup');
   if (!setup) return;
   const hasModel = Boolean(state.health && state.health.models && state.health.models.length);
-  const hasKey = Boolean(state.settings && state.settings.llm && state.settings.llm.api_key);
+  const authOk = hasActiveAuth() || state.mode === 'parts';
   const modelItem = setup.querySelector('[data-setup="model"]');
   const keyItem = setup.querySelector('[data-setup="key"]');
   if (modelItem) modelItem.hidden = hasModel;
-  if (keyItem) keyItem.hidden = hasKey;
-  setup.hidden = hasModel && hasKey;
+  if (keyItem) keyItem.hidden = authOk;
+  setup.hidden = hasModel && authOk;
 }
 
 /* ---------------------------------------------------------------- превью клипов */
@@ -273,14 +368,16 @@ function renderClips(clips, source) {
     card.className = 'clip';
     const score = Number(clip.score) || 0;
     const scoreClass = score >= 75 ? '' : score >= 50 ? ' is-mid' : ' is-low';
+    const vUrl = `${clip.video_url}?t=${Date.now()}`;
+    const pUrl = `${clip.preview_url}?t=${Date.now()}`;
     card.innerHTML = `
       <div class="clip__thumb">
-        <img src="${esc(clip.preview_url)}" alt="" loading="lazy">
+        <img src="${esc(pUrl)}" alt="" loading="lazy">
         <div class="clip__badges">
           <span class="badge badge--score${scoreClass}">${score ? esc(score) + '%' : '—'}</span>
           <span class="badge">${esc(fmtDuration(clip.duration))}</span>
         </div>
-        <button class="clip__play" data-play="${esc(clip.video_url)}" data-title="${esc(clip.title)}" data-hook="${esc(clip.hook)}" aria-label="Смотреть клип">
+        <button class="clip__play" data-play="${esc(vUrl)}" data-title="${esc(clip.title)}" data-hook="${esc(clip.hook)}" aria-label="Смотреть клип">
           <svg class="ico"><use href="#i-play"/></svg>
         </button>
       </div>
@@ -292,8 +389,9 @@ function renderClips(clips, source) {
           <span>${(clip.hashtags || []).length ? esc(clip.hashtags.slice(0, 2).join(' ')) : 'без тегов'}</span>
         </div>
         <div class="clip__meta clip__meta--dense">${esc(clipMetrics(clip))}</div>
-        <div class="clip__actions">
-          <button class="clip__btn" data-download="${esc(clip.video_url)}">Скачать</button>
+        <div class="clip__actions clip__actions--3">
+          <button class="clip__btn" data-download="${esc(clip.video_url)}" title="Скачать mp4">Файл</button>
+          <button class="clip__btn" data-edit="${esc(clip.id)}" title="Править текст и границы">Править</button>
           <button class="clip__btn clip__btn--accent" data-upload="${esc(clip.id)}">Грузить</button>
         </div>
       </div>`;
@@ -321,10 +419,7 @@ function renderStats(clips) {
 }
 
 function clipMetrics(clip) {
-  const parts = [
-    `${Number(clip.words) || 0} сл.`,
-    `${Number(clip.wpm) || 0}/мин`,
-  ];
+  const parts = [`${Number(clip.words) || 0} сл.`, `${Number(clip.wpm) || 0}/мин`];
   if (clip.effect && clip.effect !== 'none') {
     const fx = (state.looks.effects || []).find((item) => item.id === clip.effect);
     parts.push(fx ? fx.label : clip.effect);
@@ -333,6 +428,7 @@ function clipMetrics(clip) {
     const track = (state.looks.music || []).find((item) => item.id === clip.music);
     parts.push(track ? `♫ ${track.title}` : '♫');
   }
+  if (clip.integration) parts.push(`+ ${clip.integration}`);
   return parts.join(' · ');
 }
 
@@ -361,6 +457,11 @@ document.addEventListener('click', (event) => {
     document.body.appendChild(link);
     link.click();
     link.remove();
+    return;
+  }
+  const edit = event.target.closest('[data-edit]');
+  if (edit) {
+    openEditModal(edit.dataset.edit);
     return;
   }
   const upload = event.target.closest('[data-upload]');
@@ -393,28 +494,107 @@ el.modal.addEventListener('click', (event) => {
   if (event.target.dataset.close) closeModal();
 });
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !el.modal.hidden) closeModal();
+  if (event.key === 'Escape') {
+    if (!el.modal.hidden) closeModal();
+    if (!el.adModal.hidden) closeAdModal();
+    if (!el.editModal.hidden) closeEditModal();
+  }
   if (event.ctrlKey && event.key === 'Enter' && state.screen === 'cut' && !el.runBtn.disabled) {
     event.preventDefault();
     el.runBtn.click();
   }
 });
 
-/* ---------------------------------------------------------------- параметры */
+/* ---------------------------------------------------------------- параметры и режимы */
+
+function syncModeUI() {
+  const isBrainrot = state.mode === 'brainrot';
+  const allowAll = state.mode === 'parts' || isBrainrot;
+  el.brainrotPanel.hidden = !isBrainrot;
+  el.clipsAllBtn.hidden = !allowAll;
+  el.modeHint.textContent = MODE_HINTS[state.mode] || '';
+  if (!allowAll && state.clipCount === 0) {
+    state.clipCount = 5;
+    syncClipButtons();
+  }
+  $$('button[data-mode]', el.modeSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.mode === state.mode));
+  renderSetup();
+  updateRunHint();
+}
+
+el.modeSeg.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-mode]');
+  if (!button) return;
+  state.mode = button.dataset.mode;
+  if (state.mode === 'brainrot') {
+    if (state.music === 'none' && (state.looks.music || []).some((m) => m.id === 'drama-guzheng')) {
+      state.music = 'drama-guzheng';
+      el.musicSelect.value = state.music;
+      updateVolumeVisibility();
+    }
+    if (state.style === 'classic') {
+      state.style = 'drama';
+      $$('.style', el.styleSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.style === state.style));
+    }
+  }
+  syncModeUI();
+});
+
+function syncClipButtons() {
+  const matched = $$('button[data-clips]', el.clipsSeg).some((b) => {
+    const active = Number(b.dataset.clips) === state.clipCount;
+    b.classList.toggle('is-active', active);
+    return active;
+  });
+  el.clipsCustom.value = matched || state.clipCount <= 0 ? '' : String(state.clipCount);
+}
 
 el.clipsSeg.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-clips]');
   if (!button) return;
   state.clipCount = Number(button.dataset.clips);
-  $$('button[data-clips]', el.clipsSeg).forEach((b) => b.classList.toggle('is-active', b === button));
+  syncClipButtons();
   updateRunHint();
 });
+
+el.clipsCustom.addEventListener('input', () => {
+  const val = parseInt(el.clipsCustom.value, 10);
+  if (Number.isFinite(val) && val >= 1) {
+    state.clipCount = Math.min(100, val);
+    $$('button[data-clips]', el.clipsSeg).forEach((b) => b.classList.remove('is-active'));
+    updateRunHint();
+  }
+});
+
+function syncDurationUI() {
+  el.durMin.value = String(state.dur[0]);
+  el.durMax.value = String(state.dur[1]);
+  $$('button[data-dur]', el.durSeg).forEach((b) => {
+    const [a, c] = b.dataset.dur.split(',').map(Number);
+    b.classList.toggle('is-active', a === state.dur[0] && c === state.dur[1]);
+  });
+  updateRunHint();
+}
 
 el.durSeg.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-dur]');
   if (!button) return;
   state.dur = button.dataset.dur.split(',').map(Number);
-  $$('button[data-dur]', el.durSeg).forEach((b) => b.classList.toggle('is-active', b === button));
+  syncDurationUI();
+});
+
+function onCustomDur() {
+  const lo = Math.max(4, parseInt(el.durMin.value, 10) || 18);
+  const hi = Math.max(lo, parseInt(el.durMax.value, 10) || lo);
+  state.dur = [lo, hi];
+  $$('button[data-dur]', el.durSeg).forEach((b) => b.classList.remove('is-active'));
+  updateRunHint();
+}
+el.durMin.addEventListener('change', onCustomDur);
+el.durMax.addEventListener('change', onCustomDur);
+
+el.subtitlesToggle.addEventListener('change', () => {
+  state.subtitles = el.subtitlesToggle.checked;
   updateRunHint();
 });
 
@@ -424,6 +604,33 @@ el.styleSeg.addEventListener('click', (event) => {
   state.style = button.dataset.style;
   $$('.style', el.styleSeg).forEach((b) => b.classList.toggle('is-active', b === button));
   updateRunHint();
+});
+
+el.framingSeg.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-framing]');
+  if (!button) return;
+  state.framing = button.dataset.framing;
+  $$('button[data-framing]', el.framingSeg).forEach((b) => b.classList.toggle('is-active', b === button));
+});
+
+el.voiceSelect.addEventListener('change', () => { state.voice = el.voiceSelect.value; });
+el.origVol.addEventListener('input', () => {
+  state.origAudioVol = Number(el.origVol.value);
+  el.origVolLabel.textContent = `${state.origAudioVol}%`;
+});
+el.brainrotRewrite.addEventListener('change', () => {
+  state.brainrotRewrite = el.brainrotRewrite.checked;
+});
+el.dramaMusicPills.addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-pick-music]');
+  if (!btn) return;
+  const trackId = btn.dataset.pickMusic;
+  if ((state.looks.music || []).some((m) => m.id === trackId)) {
+    state.music = trackId;
+    el.musicSelect.value = trackId;
+    updateVolumeVisibility();
+    updateRunHint();
+  }
 });
 
 /* ---------------------------------------------------------------- стиль кадра, музыка, защита */
@@ -445,6 +652,12 @@ function renderLooks() {
     ? 'Треки сгенерированы для Cutter — claim\'ов не будет.'
     : 'Пак музыки не установлен. Можно рендерить без подложки.';
   updateVolumeVisibility();
+
+  const voices = state.looks.voices || [];
+  el.voiceSelect.innerHTML = voices
+    .map((v) => `<option value="${esc(v.id)}">${esc(v.label)}${v.note ? ' — ' + esc(v.note) : ''}</option>`)
+    .join('');
+  if (voices.some((v) => v.id === state.voice)) el.voiceSelect.value = state.voice;
 }
 
 function updateVolumeVisibility() {
@@ -465,11 +678,17 @@ el.fxSeg.addEventListener('click', (event) => {
 el.musicSelect.addEventListener('change', () => {
   state.music = el.musicSelect.value;
   updateVolumeVisibility();
+  updateRunHint();
 });
 
 el.musicVolume.addEventListener('input', () => {
   state.musicVolume = Number(el.musicVolume.value);
   el.volLabel.textContent = `${state.musicVolume}%`;
+});
+
+el.integrationSelect.addEventListener('change', () => {
+  state.integrationId = el.integrationSelect.value;
+  updateRunHint();
 });
 
 el.protectSeg.addEventListener('click', (event) => {
@@ -483,12 +702,16 @@ function updateRunHint() {
   const hasSource = Boolean(state.file) || Boolean(el.ytUrl.value.trim());
   el.runBtn.disabled = !hasSource;
   const fx = (state.looks.effects || []).find((item) => item.id === state.effect);
-  const parts = [`${state.clipCount} клипов`, `${state.dur[0]}–${state.dur[1]} с`, STYLE_LABELS[state.style]];
+  const countLabel = state.clipCount === 0 ? 'все части' : `${state.clipCount} клипов`;
+  const modeLabel = state.mode === 'parts' ? 'на части' : state.mode === 'brainrot' ? 'дорама' : 'моменты';
+  const parts = [modeLabel, countLabel, `${state.dur[0]}–${state.dur[1]} с`];
+  if (state.subtitles) parts.push(STYLE_LABELS[state.style] || 'субтитры');
+  else parts.push('без сабов');
   if (fx && fx.id !== 'none') parts.push(fx.label);
   if (state.music !== 'none') parts.push('музыка');
-  if (state.protection !== 'off') parts.push('защита');
+  if (state.integrationId) parts.push('+реклама');
   el.runHint.textContent = hasSource ? parts.join(' · ') : 'Выбери файл или вставь ссылку';
-  el.estimate.textContent = `${state.clipCount} клипов · ${state.dur[0]}–${state.dur[1]} с`;
+  el.estimate.textContent = `${countLabel} · ${state.dur[0]}–${state.dur[1]} с`;
 }
 
 el.ytUrl.addEventListener('input', updateRunHint);
@@ -597,10 +820,10 @@ function startJobUI(stageText) {
 
 function stepForStage(stage) {
   if (!stage) return null;
-  if (stage.includes('скач')) return 'scan';
+  if (stage.includes('скач') || stage.includes('звук')) return 'scan';
   if (stage.includes('распозн')) return 'stt';
   if (stage.includes('момент')) return 'llm';
-  if (stage.includes('рендер')) return 'render';
+  if (stage.includes('рендер') || stage.includes('интегр')) return 'render';
   if (stage.includes('готов')) return 'render';
   return null;
 }
@@ -628,11 +851,24 @@ function renderJob(job) {
     el.cancelBtn.hidden = true;
     setStatus('ok', 'готово');
     const clips = (job.result && job.result.clips) || [];
-    if (clips.length) renderClips(clips, job.result.source || state.sourceName);
+    if (clips.length) {
+      renderClips(clips, job.result.source || state.sourceName);
+      if (job.kind === 'analyze' || job.kind === 'youtube') {
+        state.selected = new Set(clips.map((c) => String(c.id)));
+        localStorage.setItem('cutter.jobId', job.id);
+      }
+    }
     if (job.kind === 'upload' && job.result) renderUploadResult(job.result);
     if (job.kind === 'download_model') {
       toast('Модель скачана', 'ok');
       refreshModels();
+    }
+    if (job.kind === 'login') {
+      toast('Аккаунт подключён', 'ok');
+      refreshAccounts().then(() => renderChips(null));
+    }
+    if (job.kind === 'integration') {
+      toast('Интеграция применена к клипам', 'ok');
     }
     if (job.kind === 'analyze' || job.kind === 'youtube') toast(`Готово: ${clips.length} клипов`, 'ok');
   } else if (job.status === 'error') {
@@ -656,6 +892,7 @@ async function pollJob() {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
       el.runBtn.disabled = false;
+      el.uploadBtn.disabled = state.selected.size === 0;
       if (job.status === 'done' && job.kind === 'upload') loadClipsForJob(state.jobId);
     }
   } catch (error) {
@@ -682,12 +919,20 @@ el.runBtn.addEventListener('click', async () => {
     if (url) {
       const data = await apiJson('/api/youtube', {
         url,
+        mode: state.mode,
         clips: state.clipCount,
         style: state.style,
+        framing: state.framing,
+        subtitles: state.subtitles,
+        encoder: state.encoder,
         effect: state.effect,
         protection: state.protection,
         music: state.music,
         music_volume: state.musicVolume / 100,
+        voice: state.voice,
+        orig_audio_vol: state.origAudioVol / 100,
+        brainrot_rewrite: state.brainrotRewrite,
+        integration_id: state.integrationId,
         min_dur: state.dur[0],
         max_dur: state.dur[1],
       });
@@ -701,12 +946,20 @@ el.runBtn.addEventListener('click', async () => {
     }
     const form = new FormData();
     form.append('file', state.file);
+    form.append('mode', state.mode);
     form.append('clips', state.clipCount);
     form.append('style', state.style);
+    form.append('framing', state.framing);
+    form.append('subtitles', String(state.subtitles));
+    form.append('encoder', state.encoder);
     form.append('effect', state.effect);
     form.append('protection', state.protection);
     form.append('music', state.music);
     form.append('music_volume', state.musicVolume / 100);
+    form.append('voice', state.voice);
+    form.append('orig_audio_vol', state.origAudioVol / 100);
+    form.append('brainrot_rewrite', String(state.brainrotRewrite));
+    form.append('integration_id', state.integrationId);
     form.append('min_dur', state.dur[0]);
     form.append('max_dur', state.dur[1]);
     const data = await api('/api/analyze', { method: 'POST', body: form });
@@ -734,6 +987,256 @@ el.openFolder.addEventListener('click', async () => {
     await apiJson('/api/open-folder', { job_id: state.jobId });
   } catch (error) {
     toast(error.message, 'err');
+  }
+});
+
+el.uploadAllResults.addEventListener('click', () => {
+  if (!state.clipList.length) return;
+  state.selected = new Set(state.clipList.map((c) => String(c.id)));
+  go('upload');
+  renderPickList();
+  updateUploadButton();
+});
+
+/* ---------------------------------------------------------------- редактирование клипов */
+
+function openEditModal(clipId) {
+  const clip = state.clipList.find((c) => String(c.id) === String(clipId));
+  if (!clip) return;
+  state.editingClipId = String(clip.id);
+  el.editTitle.value = clip.title || '';
+  el.editHook.value = clip.hook || '';
+  el.editTags.value = (clip.hashtags || []).join(' ');
+  el.editStart.value = String(clip.start ?? 0);
+  el.editEnd.value = String(clip.end ?? 10);
+  el.editModal.hidden = false;
+}
+
+function closeEditModal() {
+  el.editModal.hidden = true;
+  state.editingClipId = null;
+}
+
+el.editModalClose.addEventListener('click', closeEditModal);
+el.editModal.addEventListener('click', (e) => {
+  if (e.target.dataset.closeEdit) closeEditModal();
+});
+
+el.editSaveMeta.addEventListener('click', async () => {
+  if (!state.jobId || !state.editingClipId) return;
+  el.editSaveMeta.disabled = true;
+  try {
+    const data = await apiJson(`/api/clips/${state.jobId}/${state.editingClipId}`, {
+      title: el.editTitle.value.trim(),
+      hook: el.editHook.value.trim(),
+      hashtags: el.editTags.value.trim(),
+    }, 'PATCH');
+    const idx = state.clipList.findIndex((c) => String(c.id) === state.editingClipId);
+    if (idx >= 0 && data.clip) state.clipList[idx] = data.clip;
+    renderClips(state.clipList, state.sourceName);
+    toast('Метаданные клипа сохранены', 'ok');
+    closeEditModal();
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    el.editSaveMeta.disabled = false;
+  }
+});
+
+el.editRecutBtn.addEventListener('click', async () => {
+  if (!state.jobId || !state.editingClipId) return;
+  el.editRecutBtn.disabled = true;
+  el.editRecutBtn.textContent = 'Перерезаю…';
+  try {
+    const data = await apiJson(`/api/clips/${state.jobId}/${state.editingClipId}/recut`, {
+      start: Number(el.editStart.value),
+      end: Number(el.editEnd.value),
+    });
+    const idx = state.clipList.findIndex((c) => String(c.id) === state.editingClipId);
+    if (idx >= 0 && data.clip) state.clipList[idx] = data.clip;
+    renderClips(state.clipList, state.sourceName);
+    toast('Границы клипа обновлены', 'ok');
+    closeEditModal();
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    el.editRecutBtn.disabled = false;
+    el.editRecutBtn.textContent = 'Перерезать границы';
+  }
+});
+
+/* ---------------------------------------------------------------- интеграции */
+
+async function refreshIntegrations() {
+  try {
+    const data = await api('/api/integrations');
+    state.integrations = data.integrations || [];
+  } catch {
+    state.integrations = [];
+  }
+  const opts = ['<option value="">Без интеграции</option>']
+    .concat(state.integrations.map((ad) => `<option value="${esc(ad.id)}">${esc(ad.name)} (${ad.mode === 'overlay' ? 'баннер' : 'вставка'})</option>`));
+  el.integrationSelect.innerHTML = opts.join('');
+  if (state.integrations.some((ad) => ad.id === state.integrationId)) {
+    el.integrationSelect.value = state.integrationId;
+  } else {
+    state.integrationId = '';
+  }
+  renderAdLibrary();
+}
+
+function renderAdLibrary() {
+  if (!state.integrations.length) {
+    el.adLibrary.innerHTML = '<p class="hint">Сохранённых интеграций пока нет.</p>';
+    return;
+  }
+  el.adLibrary.innerHTML = state.integrations.map((ad) => `
+    <div class="ad-item">
+      <div class="ad-item__info">
+        <strong>${esc(ad.name)}</strong>
+        <span>${ad.mode === 'overlay' ? 'Баннер' : 'Видео'} · ${esc(ad.position)} · ${(Number(ad.bytes || 0) / 1024).toFixed(0)} КБ</span>
+      </div>
+      <button class="btn btn--soft btn--tiny" data-use-ad="${esc(ad.id)}" type="button">Выбрать</button>
+      ${state.clipList.length ? `<button class="btn btn--soft btn--tiny" data-apply-ad="${esc(ad.id)}" type="button">В клипы</button>` : ''}
+      <button class="btn btn--ghost btn--tiny" data-del-ad="${esc(ad.id)}" type="button">✕</button>
+    </div>`).join('');
+}
+
+function syncAdModeFields() {
+  const isOverlay = el.adMode.value === 'overlay';
+  el.adHookRow.hidden = isOverlay || el.adPosition.value !== 'after_hook';
+  el.adScaleRow.hidden = !isOverlay;
+  el.adTimeRow.hidden = !isOverlay;
+  if (isOverlay) {
+    el.adPosition.innerHTML = `
+      <option value="bottom">Снизу (над краем)</option>
+      <option value="top">Сверху</option>
+      <option value="center">По центру</option>`;
+  } else {
+    el.adPosition.innerHTML = `
+      <option value="after_hook">После хука (через N сек)</option>
+      <option value="start">В самом начале (преролл)</option>
+      <option value="end">В конце (постролл)</option>`;
+  }
+}
+
+el.adMode.addEventListener('change', syncAdModeFields);
+el.adPosition.addEventListener('change', () => {
+  el.adHookRow.hidden = el.adMode.value === 'overlay' || el.adPosition.value !== 'after_hook';
+});
+
+function openAdModal(forResults = false) {
+  syncAdModeFields();
+  el.adApplyNowBtn.hidden = !forResults && !state.clipList.length;
+  renderAdLibrary();
+  el.adModal.hidden = false;
+}
+
+function closeAdModal() {
+  el.adModal.hidden = true;
+}
+
+el.openAdModal.addEventListener('click', () => openAdModal(false));
+el.applyAdResults.addEventListener('click', () => openAdModal(true));
+el.adModalClose.addEventListener('click', closeAdModal);
+el.adModal.addEventListener('click', (e) => {
+  if (e.target.dataset.closeAd) closeAdModal();
+});
+
+async function uploadSelectedAdFile() {
+  const file = el.adFile.files && el.adFile.files[0];
+  if (!file) throw new Error('Выбери файл интеграции (MP4 или PNG/GIF)');
+  const form = new FormData();
+  form.append('file', file);
+  form.append('name', el.adName.value.trim() || file.name);
+  form.append('mode', el.adMode.value);
+  form.append('position', el.adPosition.value);
+  form.append('hook_sec', el.adHookSec.value || '3');
+  form.append('start_sec', el.adStartSec.value || '0');
+  form.append('duration_sec', el.adDurSec.value || '0');
+  form.append('scale_pct', el.adScale.value || '75');
+  const data = await api('/api/integrations', { method: 'POST', body: form });
+  await refreshIntegrations();
+  state.integrationId = data.integration.id;
+  el.integrationSelect.value = state.integrationId;
+  el.adFile.value = '';
+  updateRunHint();
+  return data.integration;
+}
+
+el.adSaveBtn.addEventListener('click', async () => {
+  el.adSaveBtn.disabled = true;
+  try {
+    const ad = await uploadSelectedAdFile();
+    toast(`Интеграция «${ad.name}» сохранена и выбрана`, 'ok');
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    el.adSaveBtn.disabled = false;
+  }
+});
+
+async function applyIntegrationJob(adId) {
+  if (!state.jobId || !state.clipList.length) return;
+  const clipIds = state.selected.size
+    ? Array.from(state.selected)
+    : state.clipList.map((c) => String(c.id));
+  const data = await apiJson('/api/integrations/apply', {
+    job_id: state.jobId,
+    integration_id: adId,
+    clip_ids: clipIds,
+  });
+  closeAdModal();
+  watchJob(data.job_id, 'интеграция');
+  toast('Вшиваю интеграцию в готовые клипы…');
+}
+
+el.adApplyNowBtn.addEventListener('click', async () => {
+  el.adApplyNowBtn.disabled = true;
+  try {
+    let adId = state.integrationId;
+    if (el.adFile.files && el.adFile.files[0]) {
+      const ad = await uploadSelectedAdFile();
+      adId = ad.id;
+    }
+    if (!adId) throw new Error('Выбери файл или интеграцию из списка ниже');
+    await applyIntegrationJob(adId);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    el.adApplyNowBtn.disabled = false;
+  }
+});
+
+el.adLibrary.addEventListener('click', async (e) => {
+  const useBtn = e.target.closest('[data-use-ad]');
+  if (useBtn) {
+    state.integrationId = useBtn.dataset.useAd;
+    el.integrationSelect.value = state.integrationId;
+    updateRunHint();
+    toast('Интеграция выбрана для нарезки', 'ok');
+    closeAdModal();
+    return;
+  }
+  const applyBtn = e.target.closest('[data-apply-ad]');
+  if (applyBtn) {
+    try {
+      await applyIntegrationJob(applyBtn.dataset.applyAd);
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+    return;
+  }
+  const delBtn = e.target.closest('[data-del-ad]');
+  if (delBtn) {
+    try {
+      await api(`/api/integrations/${encodeURIComponent(delBtn.dataset.delAd)}`, { method: 'DELETE' });
+      await refreshIntegrations();
+      updateRunHint();
+      toast('Удалено');
+    } catch (err) {
+      toast(err.message, 'err');
+    }
   }
 });
 
@@ -868,22 +1371,16 @@ el.uploadBtn.addEventListener('click', async () => {
   el.uploadBtn.disabled = true;
   el.uploadResult.hidden = true;
   try {
-    let lastJobId = null;
-    for (const clipId of state.selected) {
-      const data = await apiJson('/api/upload', {
-        job_id: state.jobId,
-        clip_id: clipId,
-        platforms,
-        dry_run: el.dryRun.checked,
-        visibility: el.visibility.value,
-        browser: { engine: state.engine, profile_id: el.profileSelect.value },
-      });
-      lastJobId = data.job_id;
-    }
-    if (lastJobId) {
-      watchJob(lastJobId, 'загрузка');
-      toast('Запустил загрузку — браузер откроется сам');
-    }
+    const data = await apiJson('/api/upload/batch', {
+      job_id: state.jobId,
+      clip_ids: Array.from(state.selected),
+      platforms,
+      dry_run: el.dryRun.checked,
+      visibility: el.visibility.value,
+      browser: { engine: state.engine, profile_id: el.profileSelect.value },
+    });
+    watchJob(data.job_id, 'загрузка');
+    toast('Запустил пакетную загрузку — браузер откроется сам');
   } catch (error) {
     toast(error.message, 'err');
     el.uploadBtn.disabled = false;
@@ -895,10 +1392,11 @@ function renderUploadResult(result) {
   const items = result.uploads || [];
   el.uploadResultList.innerHTML = items.map((item) => {
     const ok = Boolean(item.ok);
+    const clipTag = item.clip_id ? `#${item.clip_id} · ` : '';
     return `<div class="upload-item ${ok ? 'is-ok' : 'is-err'}">
       <span class="upload-item__icon"><svg class="ico"><use href="#${ok ? 'i-check' : 'i-close'}"/></svg></span>
       <div class="upload-item__text">
-        <strong>${esc(item.platform)}</strong>
+        <strong>${esc(clipTag + item.platform)}</strong>
         <p>${esc(item.message || (ok ? 'готово' : 'не вышло'))}</p>
       </div>
       ${item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">открыть</a>` : ''}
@@ -912,7 +1410,7 @@ async function loadHistory() {
   el.history.innerHTML = '<div class="skeleton" style="height:64px"></div>'.repeat(3);
   try {
     const data = await api('/api/jobs?limit=30');
-    const rows = (data.jobs || []).filter((job) => job.kind !== 'download_model');
+    const rows = (data.jobs || []).filter((job) => job.kind !== 'download_model' && job.kind !== 'login');
     if (!rows.length) {
       el.history.innerHTML = '<div class="empty"><p>Пока пусто. Запусти первую нарезку.</p></div>';
       return;
@@ -951,16 +1449,150 @@ el.history.addEventListener('click', async (event) => {
   }
 });
 
-/* ---------------------------------------------------------------- настройки */
+/* ---------------------------------------------------------------- аккаунты и настройки */
+
+async function refreshAccounts() {
+  try {
+    const data = await api('/api/accounts');
+    state.accounts = data.accounts || [];
+  } catch {
+    state.accounts = [];
+  }
+  renderAccountsList();
+  renderAccountDropdown();
+  renderChips(null);
+}
+
+function renderAccountsList() {
+  if (!state.accounts.length) {
+    el.accountsList.innerHTML = '<div class="empty"><p>Аккаунты не подключены. Войди в ChatGPT Plus/Pro или Google Gemini кнопками выше.</p></div>';
+    return;
+  }
+  const activeId = state.settings?.llm?.account_id || '';
+  el.accountsList.innerHTML = state.accounts.map((acc) => {
+    const isActive = acc.id === activeId;
+    const isOk = acc.status === 'ready';
+    const provLabel = acc.provider === 'chatgpt' ? 'ChatGPT' : 'Google Gemini';
+    const methodLabel = acc.auth_method === 'oauth' ? 'OAuth' : 'Браузер';
+    const planLabel = acc.plan ? ` · ${acc.plan}` : '';
+    return `<div class="acc-row${isActive ? ' is-active' : ''}">
+      <div class="acc-row__info">
+        <div class="acc-row__title">
+          <span>${esc(acc.label)}</span>
+          <span class="tag">${esc(provLabel)} · ${esc(methodLabel)}${esc(planLabel)}</span>
+          <span class="tag ${isOk ? 'tag--ok' : ''}">${esc(acc.status)}</span>
+        </div>
+        <div class="acc-row__meta">${esc(acc.email || acc.profile_dir || acc.id)}${acc.error ? ' · ' + esc(acc.error) : ''}</div>
+      </div>
+      <div class="acc-row__btns">
+        <button class="btn btn--soft btn--tiny" data-acc-use="${esc(acc.id)}" type="button">${isActive ? 'Активен' : 'Выбрать'}</button>
+        <button class="btn btn--soft btn--tiny" data-acc-test="${esc(acc.id)}" type="button">Проверить</button>
+        <button class="btn btn--ghost btn--tiny" data-acc-relogin="${esc(acc.id)}" data-acc-prov="${esc(acc.provider)}" data-acc-method="${esc(acc.auth_method)}" type="button">Перевойти</button>
+        <button class="btn btn--ghost btn--tiny" data-acc-del="${esc(acc.id)}" type="button">Удалить</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAccountDropdown() {
+  const prov = el.llmProvider.value;
+  if (!isAccountProvider(prov)) {
+    el.llmAccountRow.hidden = true;
+    return;
+  }
+  el.llmAccountRow.hidden = false;
+  const want = prov === 'chatgpt_sub' ? 'chatgpt' : 'google';
+  const filtered = state.accounts.filter((a) => a.provider === want);
+  if (!filtered.length) {
+    el.llmAccount.innerHTML = '<option value="">Нет подключённых аккаунтов — войди выше</option>';
+    return;
+  }
+  el.llmAccount.innerHTML = filtered
+    .map((a) => `<option value="${esc(a.id)}">${esc(a.label)} (${a.auth_method})</option>`)
+    .join('');
+  const saved = state.settings?.llm?.account_id || '';
+  if (filtered.some((a) => a.id === saved)) el.llmAccount.value = saved;
+}
+
+async function startAccountLogin(provider, authMethod, accountId = '') {
+  try {
+    const data = await apiJson('/api/accounts/login', {
+      provider,
+      auth_method: authMethod,
+      account_id: accountId,
+    });
+    watchJob(data.job_id, 'вход');
+    toast(authMethod === 'oauth'
+      ? 'Открыл окно авторизации ChatGPT в браузере…'
+      : 'Открыл окно браузера — войди в аккаунт, окно закроется само');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+el.loginChatgptOauth.addEventListener('click', () => startAccountLogin('chatgpt', 'oauth'));
+el.loginChatgptBrowser.addEventListener('click', () => startAccountLogin('chatgpt', 'browser'));
+el.loginGoogleBrowser.addEventListener('click', () => startAccountLogin('google', 'browser'));
+
+el.accountsList.addEventListener('click', async (event) => {
+  const useBtn = event.target.closest('[data-acc-use]');
+  if (useBtn) {
+    try {
+      const data = await apiJson('/api/accounts/select', { account_id: useBtn.dataset.accUse, activate_provider: true });
+      state.settings = data.settings;
+      renderProviderSelect(state.settings.llm.provider);
+      await refreshAccounts();
+      toast(`Выбран аккаунт ${data.account.label}`, 'ok');
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+    return;
+  }
+  const testBtn = event.target.closest('[data-acc-test]');
+  if (testBtn) {
+    testBtn.disabled = true;
+    try {
+      const data = await apiJson('/api/accounts/test', { account_id: testBtn.dataset.accTest, model: currentModelId() });
+      toast(data.message, data.ok ? 'ok' : 'err');
+    } catch (err) {
+      toast(err.message, 'err');
+    } finally {
+      testBtn.disabled = false;
+    }
+    return;
+  }
+  const reloginBtn = event.target.closest('[data-acc-relogin]');
+  if (reloginBtn) {
+    startAccountLogin(reloginBtn.dataset.accProv, reloginBtn.dataset.accMethod, reloginBtn.dataset.accRelogin);
+    return;
+  }
+  const delBtn = event.target.closest('[data-acc-del]');
+  if (delBtn) {
+    if (!confirm('Удалить аккаунт и локальный профиль?')) return;
+    try {
+      await api(`/api/accounts/${encodeURIComponent(delBtn.dataset.accDel)}`, { method: 'DELETE' });
+      await refreshAccounts();
+      toast('Аккаунт удалён');
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+  }
+});
+
+function allProviders() {
+  return [...state.accountProviders, ...state.providers];
+}
 
 function providerById(id) {
-  return state.providers.find((provider) => provider.id === id) || null;
+  return allProviders().find((provider) => provider.id === id) || null;
 }
 
 function renderProviderSelect(selectedId) {
-  el.llmProvider.innerHTML = state.providers
-    .map((provider) => `<option value="${esc(provider.id)}">${esc(provider.label)}</option>`)
-    .join('');
+  const accGroup = state.accountProviders.length
+    ? `<optgroup label="Аккаунты с подпиской (без API-ключа)">${state.accountProviders.map((p) => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</optgroup>`
+    : '';
+  const apiGroup = `<optgroup label="API-провайдеры">${state.providers.map((p) => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}</optgroup>`;
+  el.llmProvider.innerHTML = accGroup + apiGroup;
   const fallback = selectedId || state.settings?.llm?.provider || 'deepseek';
   el.llmProvider.value = providerById(fallback) ? fallback : (state.providers[0]?.id || 'deepseek');
   renderModelSelect(state.settings?.llm?.model);
@@ -969,11 +1601,15 @@ function renderProviderSelect(selectedId) {
 function renderModelSelect(selectedModel) {
   const provider = providerById(el.llmProvider.value);
   const isCustom = Boolean(provider && provider.id === 'custom');
+  const isAcc = isAccountProvider(el.llmProvider.value);
   const models = provider ? provider.models : [];
 
   el.llmModel.hidden = isCustom;
   el.llmModelCustom.hidden = !isCustom;
   el.llmBaseRow.hidden = !isCustom;
+  el.llmKeyRow.hidden = isAcc;
+  el.llmTestAccountRow.hidden = !isAcc;
+  renderAccountDropdown();
 
   el.llmModel.innerHTML = models
     .map((model) => {
@@ -995,11 +1631,9 @@ function renderModelSelect(selectedModel) {
     ? selectedModel
     : (models[0]?.id || '');
   if (wanted) el.llmModel.value = wanted;
-  const current = models.find((model) => model.id === el.llmModel.value);
   el.llmHint.textContent = provider && provider.key_url
     ? `Ключ: ${provider.key_url}. Хранится локально в app/data/settings.json`
     : 'Ключ хранится локально в app/data/settings.json';
-  if (current && current.note) el.llmHint.textContent += ` · ${current.note}`;
 }
 
 function currentProviderIsCustom() {
@@ -1041,6 +1675,23 @@ el.testKey.addEventListener('click', async () => {
     toast(error.message, 'err');
   } finally {
     el.testKey.disabled = false;
+  }
+});
+
+el.testAccountBtn.addEventListener('click', async () => {
+  const accId = el.llmAccount.value;
+  if (!accId) {
+    toast('Сначала войди в аккаунт кнопками выше', 'err');
+    return;
+  }
+  el.testAccountBtn.disabled = true;
+  try {
+    const data = await apiJson('/api/accounts/test', { account_id: accId, model: currentModelId() });
+    toast(data.message, data.ok ? 'ok' : 'err');
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally {
+    el.testAccountBtn.disabled = false;
   }
 });
 
@@ -1127,15 +1778,25 @@ el.saveSettings.addEventListener('click', async () => {
       model: currentModelId(),
       fallback: el.llmFallback.checked,
     };
+    if (isAccountProvider(el.llmProvider.value)) {
+      llmPatch.account_id = el.llmAccount.value || '';
+    }
     if (isCustom) {
       llmPatch.base_url = el.llmBaseUrl.value.trim();
     }
     if (state.keyDirty && el.llmKey.value.trim()) {
       llmPatch.api_key = el.llmKey.value.trim();
     }
+    state.encoder = el.encoderSelect.value;
     const patch = {
       llm: llmPatch,
       stt: { language: el.language.value },
+      render: { encoder: state.encoder },
+      network: {
+        proxy: el.netProxy.value.trim(),
+        force_ipv4: el.netIpv4.checked,
+        youtube_cookies: el.netCookies.checked ? 'auto' : 'none',
+      },
       paths: { outdir: el.outdir.value.trim() },
     };
     state.settings = await api('/api/settings', {
@@ -1165,7 +1826,7 @@ async function boot() {
   try {
     const health = await api('/api/health');
     setStatus(health.ffmpeg ? 'ok' : 'err', health.ffmpeg ? 'ffmpeg на месте' : 'нет ffmpeg');
-    renderChips(health);
+    state.health = health;
     el.aboutText.textContent = `Cutter ${health.version} · Python ${health.python}`;
     el.aboutStack.textContent = health.browser
       ? 'ffmpeg · faster-whisper · Playwright'
@@ -1181,8 +1842,17 @@ async function boot() {
   try {
     const providers = await api('/api/providers');
     state.providers = providers.providers || [];
+    state.accountProviders = providers.account_providers || [];
   } catch {
     state.providers = [];
+    state.accountProviders = [];
+  }
+
+  try {
+    const accData = await api('/api/accounts');
+    state.accounts = accData.accounts || [];
+  } catch {
+    state.accounts = [];
   }
 
   try {
@@ -1196,22 +1866,42 @@ async function boot() {
     state.engine = state.settings.upload.engine || 'plain';
     $$('button[data-engine]', el.engineSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.engine === state.engine));
 
+    const net = state.settings.network || {};
+    el.netProxy.value = net.proxy || '';
+    el.netIpv4.checked = net.force_ipv4 !== false;
+    el.netCookies.checked = net.youtube_cookies !== 'none';
+
     const render = state.settings.render || {};
-    state.clipCount = Number(render.clips) || 5;
+    state.mode = render.mode || 'moments';
+    state.clipCount = Number(render.clips ?? 5);
     state.style = render.style || 'classic';
+    state.framing = render.framing || 'auto';
+    state.subtitles = render.subtitles !== false;
+    state.encoder = render.encoder || 'auto';
     state.effect = render.effect || 'none';
     state.protection = render.protection || 'off';
     state.music = render.music || 'none';
     state.musicVolume = Math.round((Number(render.music_volume) || 0.18) * 100);
+    state.voice = render.voice || 'dmitry_drama';
+    state.origAudioVol = Math.round((Number(render.orig_audio_vol) ?? 0.08) * 100);
+    state.brainrotRewrite = render.brainrot_rewrite !== false;
+    state.integrationId = render.integration_id || '';
     state.dur = [Number(render.min_dur) || 18, Number(render.max_dur) || 60];
 
-    $$('button[data-clips]', el.clipsSeg).forEach((b) => b.classList.toggle('is-active', Number(b.dataset.clips) === state.clipCount));
+    el.subtitlesToggle.checked = state.subtitles;
+    el.encoderSelect.value = state.encoder;
+    el.origVol.value = String(state.origAudioVol);
+    el.origVolLabel.textContent = `${state.origAudioVol}%`;
+    el.brainrotRewrite.checked = state.brainrotRewrite;
+
+    syncClipButtons();
+    syncDurationUI();
     $$('button[data-style]', el.styleSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.style === state.style));
+    $$('button[data-framing]', el.framingSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.framing === state.framing));
     $$('button[data-protect]', el.protectSeg).forEach((b) => b.classList.toggle('is-active', b.dataset.protect === state.protection));
 
-    if (state.settings.llm.api_key) {
-      el.llmHint.dataset.hasKey = '1';
-    }
+    renderAccountsList();
+    renderAccountDropdown();
     renderChips(null);
   } catch (error) {
     toast(error.message, 'err');
@@ -1220,9 +1910,11 @@ async function boot() {
   try {
     state.looks = await api('/api/looks');
   } catch {
-    state.looks = { effects: [], music: [] };
+    state.looks = { effects: [], music: [], voices: [], encoder: 'cpu' };
   }
   renderLooks();
+  syncModeUI();
+  await refreshIntegrations();
   updateRunHint();
   updateOutdir();
 

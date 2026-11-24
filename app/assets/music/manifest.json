@@ -70,5 +70,32 @@
     "duration": 20.64,
     "license": "original, generated for Cutter",
     "file": "hype-trap.mp3"
+  },
+  {
+    "id": "drama-guzheng",
+    "title": "Дорама: грустное пианино",
+    "mood": "дорама",
+    "bpm": 84,
+    "duration": 22.91,
+    "license": "original, generated for Cutter",
+    "file": "drama-guzheng.mp3"
+  },
+  {
+    "id": "brainrot-twist",
+    "title": "Дорама: интрига-бит",
+    "mood": "интрига",
+    "bpm": 116,
+    "duration": 16.61,
+    "license": "original, generated for Cutter",
+    "file": "brainrot-twist.mp3"
+  },
+  {
+    "id": "imperial-destiny",
+    "title": "Дорама: саспенс-мистика",
+    "mood": "саспенс",
+    "bpm": 92,
+    "duration": 20.92,
+    "license": "original, generated for Cutter",
+    "file": "imperial-destiny.mp3"
   }
 ]

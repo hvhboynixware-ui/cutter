@@ -26,7 +26,10 @@ def _manifest() -> list[dict]:
 
 
 def test_eight_tracks():
-    assert len(_manifest()) == 8
+    items = _manifest()
+    assert len(items) == 11
+    ids = {item["id"] for item in items}
+    assert {"drama-guzheng", "brainrot-twist", "imperial-destiny"} <= ids
 
 
 def test_manifest_fields():

@@ -147,41 +147,76 @@ def build_audio_graph(
     music: Path | None,
     music_volume: float = 0.18,
     duck: bool = True,
+    dub: Path | None = None,
+    source_volume: float = 1.0,
 ) -> tuple[list[str], str]:
     """Возвращает (доп. аргументы входа, строка filter_complex для звука с меткой [a]).
 
-    Источник звука — вход 0, музыка — вход 1.
+    Источник звука — вход 0, опциональная озвучка (dub) и музыка (music) — следующие входы.
     """
-    if music is None:
+    if dub is None:
+        if music is None:
+            if not has_source_audio:
+                return [], ""
+            return [], (
+                "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[a]"
+            )
+
+        args = ["-stream_loop", "-1", "-i", str(music)]
+        music_chain = f"[1:a]volume={music_volume:.3f},aresample=48000[mus]"
+
         if not has_source_audio:
-            return [], ""
-        return [], (
-            "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[a]"
-        )
+            return args, f"{music_chain};[mus]anull[a]"
 
-    args = ["-stream_loop", "-1", "-i", str(music)]
-    music_chain = f"[1:a]volume={music_volume:.3f},aresample=48000[mus]"
+        voice_chain = "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11[voice]"
+        if duck:
+            graph = (
+                f"{voice_chain};"
+                f"{music_chain};"
+                f"[mus][voice]sidechaincompress=threshold=0.035:ratio=8:attack=12:release=380[musduck];"
+                f"[voice][musduck]amix=inputs=2:duration=first:dropout_transition=0,"
+                f"alimiter=limit=0.95[a]"
+            )
+        else:
+            graph = (
+                f"{voice_chain};"
+                f"{music_chain};"
+                f"[voice][mus]amix=inputs=2:duration=first:dropout_transition=0,"
+                f"alimiter=limit=0.95[a]"
+            )
+        return args, graph
 
-    if not has_source_audio:
-        return args, f"{music_chain};[mus]anull[a]"
+    # Режим переозвучки (dub): голос диктора — основной, оригинал приглушаем/глушим, музыка дакается под диктора.
+    args = ["-i", str(dub)]
+    dub_idx = 1
+    chains = [f"[{dub_idx}:a]aresample=48000,aformat=channel_layouts=stereo[dubv]"]
+    voice_inputs = ["[dubv]"]
 
-    voice_chain = "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11[voice]"
-    if duck:
-        graph = (
-            f"{voice_chain};"
-            f"{music_chain};"
-            f"[mus][voice]sidechaincompress=threshold=0.035:ratio=8:attack=12:release=380[musduck];"
-            f"[voice][musduck]amix=inputs=2:duration=first:dropout_transition=0,"
-            f"alimiter=limit=0.95[a]"
+    src_vol = max(0.0, min(1.0, float(source_volume)))
+    if has_source_audio and src_vol > 0.005:
+        chains.append(f"[0:a]volume={src_vol:.3f},aresample=48000,aformat=channel_layouts=stereo[srcbg]")
+        voice_inputs.append("[srcbg]")
+
+    if len(voice_inputs) > 1:
+        chains.append(
+            f"{''.join(voice_inputs)}amix=inputs={len(voice_inputs)}:duration=first:normalize=0[voice]"
         )
     else:
-        graph = (
-            f"{voice_chain};"
-            f"{music_chain};"
-            f"[voice][mus]amix=inputs=2:duration=first:dropout_transition=0,"
-            f"alimiter=limit=0.95[a]"
-        )
-    return args, graph
+        chains.append("[dubv]anull[voice]")
+
+    if music is None:
+        chains.append("[voice]alimiter=limit=0.95[a]")
+        return args, ";".join(chains)
+
+    mus_idx = 2
+    args += ["-stream_loop", "-1", "-i", str(music)]
+    chains.append(f"[{mus_idx}:a]volume={music_volume:.3f},aresample=48000,aformat=channel_layouts=stereo[mus]")
+    if duck:
+        chains.append("[mus][dubv]sidechaincompress=threshold=0.03:ratio=9:attack=10:release=360[musduck]")
+        chains.append("[voice][musduck]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.95[a]")
+    else:
+        chains.append("[voice][mus]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.95[a]")
+    return args, ";".join(chains)
 
 
 # ---------------------------------------------------------------- общий фильтр кадра

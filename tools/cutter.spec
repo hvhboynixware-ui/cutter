@@ -2,6 +2,7 @@
 """PyInstaller-сборка бэкенда Cutter (onedir)."""
 
 import os
+import shutil
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, collect_submodules
@@ -16,29 +17,41 @@ datas = [
 ]
 datas += collect_data_files("faster_whisper")
 datas += collect_data_files("ctranslate2")
+datas += collect_data_files("piper")
 
 binaries = []
 for name in ("ffmpeg.exe", "ffprobe.exe"):
     candidate = FFMPEG_DIR / name
+    if not candidate.is_file():
+        which = shutil.which(name)
+        if which:
+            candidate = Path(which)
     if candidate.is_file():
         binaries.append((str(candidate), "."))
     else:
-        print(f"[spec] ВНИМАНИЕ: нет {candidate} — ffmpeg не попадёт в сборку")
+        print(f"[spec] ВНИМАНИЕ: нет {candidate} — {name} не попадёт в сборку")
 
 binaries += collect_dynamic_libs("ctranslate2")
 binaries += collect_dynamic_libs("av")
+binaries += collect_dynamic_libs("onnxruntime")
 
 hiddenimports = (
     collect_submodules("uvicorn")
     + collect_submodules("faster_whisper")
     + collect_submodules("yt_dlp")
     + collect_submodules("playwright")
+    + collect_submodules("piper")
+    + collect_submodules("edge_tts")
     + [
         "app.server",
         "app.jobs",
         "app.main",
         "app.core.pipeline",
         "app.core.llm",
+        "app.core.accounts",
+        "app.core.tts",
+        "app.core.integrator",
+        "app.core.effects",
         "app.core.youtube",
         "app.core.models",
         "app.core.upload",

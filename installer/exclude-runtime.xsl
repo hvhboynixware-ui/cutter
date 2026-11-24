@@ -25,4 +25,14 @@
   <!-- выкинуть компоненты, чьи файлы лежат в dist\Cutter\data\... -->
   <xsl:template match="wix:Component[starts-with(wix:File/@Source, '$(var.SourceDir)\data\')]" />
 
+  <!-- per-user ICE38: KeyPath переносим с File на HKCU-реестр -->
+  <xsl:template match="wix:Component">
+    <xsl:copy>
+      <xsl:apply-templates select="@*|node()" />
+      <wix:RegistryValue Root="HKCU" Key="Software\Cutter\Components" Name="{@Id}" Type="string" Value="1" KeyPath="yes" />
+    </xsl:copy>
+  </xsl:template>
+
+  <xsl:template match="wix:File/@KeyPath" />
+
 </xsl:stylesheet>

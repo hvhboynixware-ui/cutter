@@ -7,3 +7,5 @@ playwright>=1.48.0
 pywebview>=5.3
 requests>=2.31.0
 numpy>=1.26.0
+edge-tts>=7.0.0
+piper-tts>=1.2.0

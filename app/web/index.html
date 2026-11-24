@@ -22,6 +22,9 @@
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h5l-1 7 8-11h-5l1-7z" fill="currentColor"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7L11 6.3M14 11a4 4 0 0 0-5.7 0L6 13.3a4 4 0 0 0 5.7 5.7l1.3-1.3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ad" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M7 15l2.5-6L12 15M8 13.2h3M14.5 9v6h2a2.5 2.5 0 0 0 0-5h-2z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M5 19.5c1.5-3.5 4.2-5 7-5s5.5 1.5 7 5" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2 2 0 0 0-2.8-2.8L5.2 17.2 4 20z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
 </svg>
 
 <div class="app">
@@ -62,7 +65,8 @@
       </div>
       <div class="topbar__chips" id="chips">
         <span class="chip chip--ghost" id="chip-model">модель: …</span>
-        <span class="chip chip--ghost" id="chip-key">ключ: …</span>
+        <button class="chip chip--btn" id="chip-key" data-goto="settings" title="Настроить аккаунт или API-ключ">вход: …</button>
+        <span class="chip chip--ghost" id="chip-encoder">рендер: …</span>
         <span class="chip chip--ghost" id="chip-browser">браузер: …</span>
       </div>
     </header>
@@ -83,8 +87,8 @@
           <div class="setup__item" data-setup="key">
             <span class="setup__num">2</span>
             <div class="setup__text">
-              <strong>Вставь ключ LLM</strong>
-              <span>DeepSeek — примерно 4 доллара на 1000 часов видео. Есть бесплатные альтернативы.</span>
+              <strong>Войди в Google / ChatGPT или вставь API-ключ</strong>
+              <span>Можно войти в аккаунт с подпиской без API-ключа — или использовать режим «На части» без ИИ.</span>
             </div>
             <button class="btn btn--soft btn--tiny" data-goto="settings">В настройки</button>
           </div>
@@ -98,7 +102,7 @@
                 <input type="file" id="file-input" accept="video/*,audio/*" hidden>
                 <svg class="drop__ico ico"><use href="#i-download"/></svg>
                 <p class="drop__title">Перетащи видео или нажми</p>
-                <p class="drop__hint">mp4, mov, mkv, mp3 · подойдёт подкаст, стрим, лекция</p>
+                <p class="drop__hint">mp4, mov, mkv, mp3 · подойдёт подкаст, стрим, лекция, дорама</p>
               </div>
 
               <div class="or"><span>или</span></div>
@@ -118,27 +122,87 @@
               </div>
 
               <div class="param">
+                <label class="param__label">Режим нарезки</label>
+                <div class="segmented" id="mode-seg" role="group" aria-label="Режим нарезки">
+                  <button data-mode="moments" class="is-active">Моменты (ИИ)</button>
+                  <button data-mode="parts">На части</button>
+                  <button data-mode="brainrot">Китайская дорама (озвучка)</button>
+                </div>
+                <p class="hint" id="mode-hint">ИИ выберет самые цепляющие моменты с хуком в начале.</p>
+              </div>
+
+              <div class="brainrot-box" id="brainrot-panel" hidden>
+                <div class="brainrot-box__head">
+                  <strong>Китайская дорама / Брейнрот-пересказ</strong>
+                  <span>полная переозвучка по хронометражу + музыка</span>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="voice-select">Голос озвучки</label>
+                  <select class="input" id="voice-select"></select>
+                </div>
+                <div class="field">
+                  <label class="field__label">Громкость оригинала на фоне</label>
+                  <div class="vol">
+                    <input type="range" id="orig-vol" min="0" max="40" step="1" value="8" aria-label="Громкость оригинала">
+                    <span class="vol__value" id="orig-vol-label">8%</span>
+                  </div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="brainrot-rewrite" checked>
+                  <span class="switch__track"><span class="switch__thumb"></span></span>
+                  <span class="switch__label">Перевести и переписать текст в стиль пересказа дорамы (ИИ)</span>
+                </label>
+                <div class="drama-music-pills" id="drama-music-pills">
+                  <span class="hint">Каноничный фон:</span>
+                  <button type="button" class="btn btn--ghost btn--tiny" data-pick-music="drama-guzheng">Грустная дорама</button>
+                  <button type="button" class="btn btn--ghost btn--tiny" data-pick-music="brainrot-twist">Интрига-бит</button>
+                  <button type="button" class="btn btn--ghost btn--tiny" data-pick-music="imperial-destiny">Саспенс</button>
+                </div>
+              </div>
+
+              <div class="param">
                 <label class="param__label">Сколько клипов</label>
-                <div class="segmented" id="clips-seg" role="group" aria-label="Сколько клипов">
-                  <button data-clips="3">3</button>
-                  <button data-clips="5" class="is-active">5</button>
-                  <button data-clips="7">7</button>
-                  <button data-clips="10">10</button>
+                <div class="row row--wrap">
+                  <div class="segmented" id="clips-seg" role="group" aria-label="Сколько клипов">
+                    <button data-clips="3">3</button>
+                    <button data-clips="5" class="is-active">5</button>
+                    <button data-clips="7">7</button>
+                    <button data-clips="10">10</button>
+                    <button data-clips="15">15</button>
+                    <button data-clips="20">20</button>
+                    <button data-clips="0" id="clips-all-btn" hidden>Все части</button>
+                  </div>
+                  <input class="input input--num" id="clips-custom" type="number" min="1" max="100" placeholder="своё" title="Своё количество клипов">
                 </div>
               </div>
 
               <div class="param">
                 <label class="param__label">Длина клипа</label>
                 <div class="segmented" id="dur-seg" role="group" aria-label="Длина клипа">
-                  <button data-dur="12,30">12–30 с</button>
+                  <button data-dur="10,20">15 с</button>
+                  <button data-dur="20,40">30 с</button>
+                  <button data-dur="35,55">45 с</button>
                   <button data-dur="18,60" class="is-active">18–60 с</button>
-                  <button data-dur="30,90">30–90 с</button>
+                  <button data-dur="75,105">90 с</button>
+                  <button data-dur="100,140">2 мин</button>
+                  <button data-dur="160,200">3 мин</button>
+                </div>
+                <div class="dur-custom">
+                  <label>От <input class="input input--num" id="dur-min" type="number" min="4" max="600" value="18"> с</label>
+                  <label>До <input class="input input--num" id="dur-max" type="number" min="5" max="600" value="60"> с</label>
                 </div>
               </div>
 
               <div class="param">
-                <label class="param__label">Стиль субтитров</label>
-                <div class="styles" id="style-seg" role="group" aria-label="Стиль субтитров">
+                <div class="param__row">
+                  <label class="param__label">Субтитры и кадр</label>
+                  <label class="switch switch--compact">
+                    <input type="checkbox" id="subtitles-toggle" checked>
+                    <span class="switch__track"><span class="switch__thumb"></span></span>
+                    <span class="switch__label">Субтитры</span>
+                  </label>
+                </div>
+                <div class="styles styles--5" id="style-seg" role="group" aria-label="Стиль субтитров">
                   <button data-style="classic" class="style is-active">
                     <span class="style__sample style__sample--classic">АБВ</span><span>Классика</span>
                   </button>
@@ -151,6 +215,16 @@
                   <button data-style="neon" class="style">
                     <span class="style__sample style__sample--neon">АБВ</span><span>Неон</span>
                   </button>
+                  <button data-style="drama" class="style">
+                    <span class="style__sample style__sample--drama">Абв</span><span>Дорама</span>
+                  </button>
+                </div>
+                <div class="segmented segmented--sm" id="framing-seg" role="group" aria-label="Формат кадра" style="margin-top:10px">
+                  <button data-framing="auto" class="is-active">Кадр: Авто</button>
+                  <button data-framing="blur">9:16 блюр</button>
+                  <button data-framing="crop">9:16 кроп</button>
+                  <button data-framing="black">9:16 поля</button>
+                  <button data-framing="original">Оригинал</button>
                 </div>
               </div>
 
@@ -169,6 +243,19 @@
                   <span class="vol__value" id="vol-label">18%</span>
                 </div>
                 <p class="hint" id="music-hint">Треки сгенерированы для Cutter — claim'ов не будет.</p>
+              </div>
+
+              <div class="param">
+                <label class="param__label" for="integration-select">Рекламная интеграция</label>
+                <div class="row">
+                  <select class="input" id="integration-select">
+                    <option value="">Без интеграции</option>
+                  </select>
+                  <button class="btn btn--soft btn--tiny" id="open-ad-modal" type="button">
+                    <svg class="ico"><use href="#i-ad"/></svg><span>Залить интеграцию</span>
+                  </button>
+                </div>
+                <p class="hint">Вставка MP4 (преролл / после хука / конец) или баннер PNG/GIF поверх клипа.</p>
               </div>
 
               <div class="param">
@@ -244,9 +331,17 @@
               <h2 class="results__title">Готовые клипы <span class="count" id="clips-count">0</span></h2>
               <p class="results__sub" id="results-sub">—</p>
             </div>
-            <button class="btn btn--soft" id="open-folder">
-              <svg class="ico"><use href="#i-folder"/></svg><span>Открыть папку</span>
-            </button>
+            <div class="results__actions">
+              <button class="btn btn--soft" id="apply-ad-results" type="button">
+                <svg class="ico"><use href="#i-ad"/></svg><span>Вставить интеграцию</span>
+              </button>
+              <button class="btn btn--soft" id="upload-all-results" type="button">
+                <svg class="ico"><use href="#i-upload"/></svg><span>Грузить все</span>
+              </button>
+              <button class="btn btn--soft" id="open-folder">
+                <svg class="ico"><use href="#i-folder"/></svg><span>Открыть папку</span>
+              </button>
+            </div>
           </div>
 
           <div class="strip" id="strip" aria-hidden="true">
@@ -367,6 +462,28 @@
       <section class="screen" data-screen="settings">
         <div class="layout-settings">
 
+          <div class="card card--wide">
+            <div class="card__head">
+              <h2 class="card__title">Аккаунты с подпиской</h2>
+              <span class="card__note">вход вместо API-ключей</span>
+            </div>
+            <div class="acc-actions">
+              <button class="btn btn--primary btn--tiny" id="login-chatgpt-oauth" type="button">
+                <svg class="ico"><use href="#i-user"/></svg><span>Войти в ChatGPT (OAuth подписка)</span>
+              </button>
+              <button class="btn btn--soft btn--tiny" id="login-chatgpt-browser" type="button">
+                <svg class="ico"><use href="#i-user"/></svg><span>Войти в ChatGPT (браузер)</span>
+              </button>
+              <button class="btn btn--soft btn--tiny" id="login-google-browser" type="button">
+                <svg class="ico"><use href="#i-user"/></svg><span>Войти в Google Gemini (браузер)</span>
+              </button>
+            </div>
+            <div class="accounts-list" id="accounts-list">
+              <div class="empty"><p>Аккаунты не подключены. Можно войти в ChatGPT Plus/Pro или Google Gemini.</p></div>
+            </div>
+            <p class="hint">Google-профиль также автоматически помогает обходить проверку «вы не робот» при скачивании с YouTube.</p>
+          </div>
+
           <div class="card">
             <div class="card__head">
               <h2 class="card__title">Мозги</h2>
@@ -376,6 +493,11 @@
             <div class="field">
               <label class="field__label" for="llm-provider">Провайдер</label>
               <select class="input" id="llm-provider"></select>
+            </div>
+
+            <div class="field" id="llm-account-row" hidden>
+              <label class="field__label" for="llm-account">Аккаунт подписки</label>
+              <select class="input" id="llm-account"></select>
             </div>
 
             <div class="field">
@@ -390,13 +512,17 @@
               <p class="hint">Любой OpenAI-совместимый: LM Studio, vLLM, Ollama, шлюзы. Ключ можно не заполнять.</p>
             </div>
 
-            <div class="field">
+            <div class="field" id="llm-key-row">
               <label class="field__label" for="llm-key">API-ключ</label>
               <div class="row">
                 <input class="input" id="llm-key" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false">
                 <button class="btn btn--soft btn--tiny" id="test-key">Проверить</button>
               </div>
               <p class="hint" id="llm-hint">Ключ хранится локально в app/data/settings.json</p>
+            </div>
+
+            <div class="field" id="llm-test-account-row" hidden>
+              <button class="btn btn--soft btn--tiny" id="test-account-btn" type="button">Проверить аккаунт</button>
             </div>
 
             <label class="switch">
@@ -416,7 +542,7 @@
           </div>
 
           <div class="card">
-            <div class="card__head"><h2 class="card__title">Папки и язык</h2></div>
+            <div class="card__head"><h2 class="card__title">Папки, сеть и рендер</h2></div>
             <div class="field">
               <label class="field__label" for="outdir">Куда складывать клипы</label>
               <input class="input" id="outdir" placeholder="по умолчанию: app/data/jobs">
@@ -426,10 +552,35 @@
               <select class="input" id="language">
                 <option value="ru">Русский</option>
                 <option value="en">Английский</option>
+                <option value="zh">Китайский</option>
                 <option value="auto">Определять сам</option>
               </select>
             </div>
-            <button class="btn btn--primary" id="save-settings">Сохранить</button>
+            <div class="field">
+              <label class="field__label" for="encoder-select">Ускорение рендера видео</label>
+              <select class="input" id="encoder-select">
+                <option value="auto">Авто (GPU если доступен)</option>
+                <option value="cpu">CPU (libx264)</option>
+                <option value="nvenc">NVIDIA NVENC</option>
+                <option value="qsv">Intel QuickSync</option>
+                <option value="amf">AMD AMF</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label" for="net-proxy">Прокси для YouTube / ИИ (необязательно)</label>
+              <input class="input" id="net-proxy" placeholder="http://127.0.0.1:10808 или socks5://127.0.0.1:1080" spellcheck="false">
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="net-ipv4" checked>
+              <span class="switch__track"><span class="switch__thumb"></span></span>
+              <span class="switch__label">Принудительно IPv4 для YouTube (стабильнее с zapret / VPN)</span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="net-cookies" checked>
+              <span class="switch__track"><span class="switch__thumb"></span></span>
+              <span class="switch__label">Подхватывать cookies Google-аккаунта при ошибках YouTube</span>
+            </label>
+            <button class="btn btn--primary" id="save-settings" style="margin-top:12px">Сохранить</button>
           </div>
 
           <div class="card card--about">
@@ -454,6 +605,107 @@
     <div class="modal__meta">
       <strong id="modal-title"></strong>
       <span id="modal-hook"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка рекламной интеграции -->
+<div class="modal" id="ad-modal" hidden>
+  <div class="modal__backdrop" data-close-ad="1"></div>
+  <div class="modal__body modal__body--wide" role="dialog" aria-modal="true" aria-label="Рекламная интеграция">
+    <button class="modal__close" id="ad-modal-close" aria-label="Закрыть">
+      <svg class="ico"><use href="#i-close"/></svg>
+    </button>
+    <h2 class="card__title" style="margin-bottom:14px">Рекламная интеграция</h2>
+
+    <div class="field">
+      <label class="field__label" for="ad-file">Файл рекламы (MP4, MOV, PNG, WebP, GIF)</label>
+      <input class="input" id="ad-file" type="file" accept="video/*,image/*">
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1">
+        <label class="field__label" for="ad-name">Название</label>
+        <input class="input" id="ad-name" placeholder="например VPN преролл">
+      </div>
+      <div class="field" style="flex:1">
+        <label class="field__label" for="ad-mode">Тип вставки</label>
+        <select class="input" id="ad-mode">
+          <option value="insert">Видео-вставка (MP4 в ролик)</option>
+          <option value="overlay">Баннер поверх кадра (PNG/GIF)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1">
+        <label class="field__label" for="ad-position">Куда вставить</label>
+        <select class="input" id="ad-position">
+          <option value="after_hook">После хука (через 3с)</option>
+          <option value="start">В самом начале (преролл)</option>
+          <option value="end">В конце (постролл)</option>
+        </select>
+      </div>
+      <div class="field" id="ad-hook-row" style="width:140px">
+        <label class="field__label" for="ad-hook-sec">Сек. хука</label>
+        <input class="input" id="ad-hook-sec" type="number" min="1" max="30" step="0.5" value="3">
+      </div>
+      <div class="field" id="ad-scale-row" style="width:140px" hidden>
+        <label class="field__label" for="ad-scale">Ширина (%)</label>
+        <input class="input" id="ad-scale" type="number" min="20" max="100" value="75">
+      </div>
+    </div>
+    <div class="row" id="ad-time-row" hidden>
+      <div class="field" style="flex:1">
+        <label class="field__label" for="ad-start-sec">Показать с (сек)</label>
+        <input class="input" id="ad-start-sec" type="number" min="0" step="0.5" value="0">
+      </div>
+      <div class="field" style="flex:1">
+        <label class="field__label" for="ad-dur-sec">Длительность (0 = весь клип)</label>
+        <input class="input" id="ad-dur-sec" type="number" min="0" step="0.5" value="0">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:6px">
+      <button class="btn btn--primary" id="ad-save-btn" type="button" style="flex:1">Сохранить в библиотеку</button>
+      <button class="btn btn--soft" id="ad-apply-now-btn" type="button" style="flex:1" hidden>Применить к готовым клипам</button>
+    </div>
+
+    <div class="ad-library" id="ad-library"></div>
+  </div>
+</div>
+
+<!-- Модалка редактирования клипа и перерезки -->
+<div class="modal" id="edit-modal" hidden>
+  <div class="modal__backdrop" data-close-edit="1"></div>
+  <div class="modal__body modal__body--wide" role="dialog" aria-modal="true" aria-label="Редактировать клип">
+    <button class="modal__close" id="edit-modal-close" aria-label="Закрыть">
+      <svg class="ico"><use href="#i-close"/></svg>
+    </button>
+    <h2 class="card__title" style="margin-bottom:14px">Редактировать клип</h2>
+    <div class="field">
+      <label class="field__label" for="edit-title">Заголовок</label>
+      <input class="input" id="edit-title" maxlength="120">
+    </div>
+    <div class="field">
+      <label class="field__label" for="edit-hook">Хук / описание</label>
+      <input class="input" id="edit-hook" maxlength="200">
+    </div>
+    <div class="field">
+      <label class="field__label" for="edit-tags">Хэштеги (через пробел)</label>
+      <input class="input" id="edit-tags" placeholder="shorts дорама история">
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1">
+        <label class="field__label" for="edit-start">Начало (сек)</label>
+        <input class="input" id="edit-start" type="number" min="0" step="0.5">
+      </div>
+      <div class="field" style="flex:1">
+        <label class="field__label" for="edit-end">Конец (сек)</label>
+        <input class="input" id="edit-end" type="number" min="1" step="0.5">
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn btn--primary" id="edit-save-meta" type="button" style="flex:1">Сохранить текст</button>
+      <button class="btn btn--soft" id="edit-recut-btn" type="button" style="flex:1">Перерезать границы</button>
     </div>
   </div>
 </div>

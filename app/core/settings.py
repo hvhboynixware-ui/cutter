@@ -68,21 +68,35 @@ DEFAULTS: dict[str, Any] = {
         "model": "deepseek-flash",
         "api_key": "",
         "base_url": "",
+        "account_id": "",
         "fallback": True,
         "keys": {"openrouter": "", "gemini": "", "groq": ""},
     },
     "stt": {"whisper_size": "base", "language": "ru"},
     "render": {
+        "mode": "moments",          # moments | parts | brainrot
         "clips": 5,
         "min_dur": 18,
         "max_dur": 60,
         "style": "classic",
+        "framing": "auto",          # auto | blur | crop | black | original
+        "subtitles": True,
+        "encoder": "auto",          # auto | cpu | nvenc | qsv | amf
         "effect": "none",
         "protection": "off",
         "music": "none",
         "music_volume": 0.18,
+        "voice": "dmitry_drama",
+        "orig_audio_vol": 0.08,
+        "brainrot_rewrite": True,
+        "integration_id": "",
         "crf": 20,
         "fps": 30,
+    },
+    "network": {
+        "proxy": "",
+        "force_ipv4": True,
+        "youtube_cookies": "auto",  # auto | account | none
     },
     "upload": {
         "engine": "plain",
