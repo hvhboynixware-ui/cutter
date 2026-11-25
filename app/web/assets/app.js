@@ -5,9 +5,10 @@
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
   const state = {
-    tab: 'studio',
+    tab: 'create',
     sourceMode: 'file',
     selectedFile: null,
+    localObjectUrl: '',
     mode: 'moments',
     framing: 'auto',
     style: 'classic',
@@ -71,37 +72,53 @@
     return `${Math.round(bytes / 1e3)} КБ`;
   }
 
-  // ------------------------------------------------------------------ navigation
+  // ------------------------------------------------------------------ tabs & recipes
 
   function switchTab(tab) {
     state.tab = tab;
-    $$('.tb-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === tab));
-    $$('.view').forEach((v) => v.classList.toggle('is-active', v.id === `tab-${tab}`));
-    if (tab === 'history') loadJobs();
-    if (tab === 'upload') syncUploadPanel();
+    $$('.pill-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === tab));
+    $$('.screen').forEach((s) => s.classList.toggle('is-active', s.id === `tab-${tab}`));
+    if (tab === 'clips') syncClipsTab();
+    if (tab === 'publish') syncUploadPanel();
     if (tab === 'settings') loadSettingsBundle();
   }
 
-  function switchInsp(pane) {
-    $$('.insp-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.insp === pane));
-    $$('.insp-pane').forEach((p) => p.classList.toggle('is-active', p.id === `insp-${pane}`));
+  function applyRecipe(recipe) {
+    $$('.recipe-card').forEach((c) => c.classList.toggle('is-active', c.dataset.recipe === recipe));
+    if (recipe === 'moments') {
+      setMode('moments');
+      setFraming('auto');
+      setStyle('classic');
+      setEffect('none');
+      $('#opt-music').value = 'none';
+    } else if (recipe === 'parts') {
+      setMode('parts');
+      setPartSeconds(45);
+      setFraming('blur');
+      setStyle('bold');
+      setEffect('cinema');
+    } else if (recipe === 'brainrot') {
+      setMode('brainrot');
+      setFraming('blur');
+      setStyle('drama');
+      setEffect('aura');
+      if ($$('#opt-voice option').some((o) => o.value === 'canon_bright')) {
+        $('#opt-voice').value = 'canon_bright';
+        updateVoiceNote();
+      }
+      if ($$('#opt-music option').some((o) => o.value === 'drama-guzheng')) $('#opt-music').value = 'drama-guzheng';
+    } else if (recipe === 'ads') {
+      if (!state.integrations.length) {
+        $('#int-modal').hidden = false;
+      } else if (!$('#opt-integration').value) {
+        $('#opt-integration').value = state.integrations[0].id;
+      }
+    }
+    updateStagePreview();
+    toast('Сценарий выбран', 'ok');
   }
 
-  function switchBin(pane) {
-    $$('.bin-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.bin === pane));
-    $$('.bin-pane').forEach((p) => p.classList.toggle('is-active', p.id === `bin-${pane}`));
-  }
-
-  function setStageView(view) {
-    const isPlayer = view === 'player';
-    $$('[data-stage-view]').forEach((b) => b.classList.toggle('is-active', b.dataset.stageView === view));
-    $('#preview-phone').hidden = isPlayer;
-    $('#stage-player-wrap').hidden = !isPlayer;
-    $('#clip-editor-strip').hidden = !isPlayer || !state.editingClip;
-    if (!isPlayer) $('#stage-video').pause();
-  }
-
-  // ------------------------------------------------------------------ stage preview
+  // ------------------------------------------------------------------ live stage preview
 
   const SAMPLE_SUBS = {
     moments: 'ОКАЗАЛОСЬ ЧТО ЭТО БЫЛА ЛОВУШКА',
@@ -139,16 +156,16 @@
       $('#preview-ad-bottom').textContent = `БАННЕР · ${intObj.name}`;
     }
 
-    const modeNames = { moments: 'Моменты', parts: `По частям (${state.partSec}с)`, brainrot: 'Озвучка дорамы' };
+    const modeNames = { moments: 'Моменты', parts: `По частям (${state.partSec}с)`, brainrot: 'Дорама + озвучка' };
     const frameNames = { auto: 'Авто', blur: 'Размытие', crop: 'Кроп', black: 'Чёрный', original: 'Оригинал' };
     const styleNames = { classic: 'Классика', bold: 'Жирный', clean: 'Чистый', neon: 'Неон', drama: 'Дорама' };
     $('#action-summary').textContent = `${modeNames[state.mode]} · ${frameNames[state.framing]} 9:16 · ${styleNames[state.style]}`;
-    $('#run-btn-label').textContent = state.sourceMode === 'youtube' ? 'Скачать и собрать' : 'Собрать клипы';
+    $('#run-btn-label').textContent = state.sourceMode === 'youtube' ? 'Скачать и создать клипы' : 'Создать клипы';
   }
 
   function setMode(mode) {
     state.mode = mode;
-    $$('#mode-stack .mode-item').forEach((c) => c.classList.toggle('is-active', c.dataset.mode === mode));
+    $$('#mode-switch [data-mode]').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === mode));
     $('#opt-moments').hidden = mode !== 'moments';
     $('#opt-parts').hidden = mode !== 'parts';
     $('#opt-brainrot').hidden = mode !== 'brainrot';
@@ -157,31 +174,31 @@
 
   function setFraming(framing) {
     state.framing = framing;
-    $$('#framing-pills .chip').forEach((b) => b.classList.toggle('is-active', b.dataset.framing === framing));
+    $$('#framing-pills .v-card').forEach((b) => b.classList.toggle('is-active', b.dataset.framing === framing));
     updateStagePreview();
   }
 
   function setStyle(style) {
     state.style = style;
-    $$('#style-pills .chip').forEach((b) => b.classList.toggle('is-active', b.dataset.style === style));
+    $$('#style-pills .st-swatch').forEach((b) => b.classList.toggle('is-active', b.dataset.style === style));
     updateStagePreview();
   }
 
   function setEffect(effect) {
     state.effect = effect;
-    $$('#effect-pills .chip').forEach((b) => b.classList.toggle('is-active', b.dataset.effect === effect));
+    $$('#effect-pills .tap-pill').forEach((b) => b.classList.toggle('is-active', b.dataset.effect === effect));
     updateStagePreview();
   }
 
   function setPartSeconds(sec) {
     state.partSec = Math.max(10, Math.min(180, Number(sec) || 45));
-    $('#part-sec-label').textContent = `${state.partSec}с`;
+    $('#part-sec-label').textContent = `${state.partSec} сек`;
     $('#part-sec-range').value = String(state.partSec);
-    $$('#part-presets .chip').forEach((b) => b.classList.toggle('is-active', Number(b.dataset.sec) === state.partSec));
+    $$('#part-presets .tap-pill').forEach((b) => b.classList.toggle('is-active', Number(b.dataset.sec) === state.partSec));
     updateStagePreview();
   }
 
-  // ------------------------------------------------------------------ initial data
+  // ------------------------------------------------------------------ initial data loading
 
   async function loadHealth() {
     try {
@@ -189,11 +206,11 @@
       state.health = h;
       $('#brand-ver').textContent = `v${h.version || '1.1.0'}`;
       $('#tel-whisper').textContent = `Речь: ${h.whisper_size || 'base'}`;
-      $('#tel-whisper').className = `st-pill ${(h.models || []).length ? 'is-ok' : ''}`;
+      $('#tel-whisper').className = `chip-status ${(h.models || []).length ? 'is-ok' : ''}`;
       $('#tel-encoder').textContent = `Рендер: ${(h.encoder || 'cpu').toUpperCase()}`;
-      $('#tel-encoder').className = `st-pill ${h.encoder && h.encoder !== 'cpu' ? 'is-ok' : ''}`;
+      $('#tel-encoder').className = `chip-status ${h.encoder && h.encoder !== 'cpu' ? 'is-ok' : ''}`;
       $('#tel-browser').textContent = h.browser ? 'Браузер: ОК' : 'Браузер: нет';
-      $('#tel-browser').className = `st-pill ${h.browser ? 'is-ok' : 'is-warn'}`;
+      $('#tel-browser').className = `chip-status ${h.browser ? 'is-ok' : 'is-warn'}`;
     } catch (e) {
       toast(e.message, 'err');
     }
@@ -207,13 +224,13 @@
     const chip = $('#tel-llm');
     if (acc) {
       chip.textContent = `ИИ: ${acc.label}`;
-      chip.className = 'st-pill is-ok';
+      chip.className = 'chip-status is-ok';
     } else if (llmCfg.api_key_masked || llmCfg.api_key) {
-      chip.textContent = `ИИ: ${llmCfg.provider || 'api'}`;
-      chip.className = 'st-pill is-ok';
+      chip.textContent = `ИИ: ${llmCfg.provider || 'API'}`;
+      chip.className = 'chip-status is-ok';
     } else {
-      chip.textContent = 'ИИ: нужен вход';
-      chip.className = 'st-pill is-warn';
+      chip.textContent = 'ИИ: подключить';
+      chip.className = 'chip-status is-warn';
     }
   }
 
@@ -238,7 +255,7 @@
     (looks.effects || []).forEach((fx) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'chip';
+      b.className = 'tap-pill';
       b.dataset.effect = fx.id;
       b.title = fx.hint || '';
       b.textContent = fx.label;
@@ -276,7 +293,7 @@
     const prev = sSel.value;
 
     sSel.innerHTML = '<option value="">Без интеграции</option>';
-    dSel.innerHTML = '<option value="">Реклама…</option>';
+    dSel.innerHTML = '<option value="">Вшить рекламу…</option>';
     list.innerHTML = items.length ? '' : '<div class="muted-xs">Нет сохранённых материалов</div>';
 
     items.forEach((it) => {
@@ -286,13 +303,13 @@
 
       const row = document.createElement('div');
       row.className = 'model-row';
-      row.innerHTML = `<div><strong>${esc(it.name)}</strong><div class="muted-xs">${esc(it.mode)} · ${esc(it.position)}</div></div><button class="btn-danger" type="button">✕</button>`;
+      row.innerHTML = `<div><strong>${esc(it.name)}</strong><div class="muted-xs">${esc(it.mode)} · ${esc(it.position)}</div></div><button class="btn-danger" type="button">Удалить</button>`;
       row.querySelector('button').addEventListener('click', async () => {
         await api(`/api/integrations/${encodeURIComponent(it.id)}`, { method: 'DELETE' });
         state.integrations = (await api('/api/integrations')).integrations || [];
         populateIntegrations();
         updateStagePreview();
-        toast('Интеграция удалена', 'ok');
+        toast('Удалено', 'ok');
       });
       list.appendChild(row);
     });
@@ -325,7 +342,7 @@
     if (r.integration_id) $('#opt-integration').value = r.integration_id;
   }
 
-  // ------------------------------------------------------------------ run job
+  // ------------------------------------------------------------------ run & poll jobs
 
   function collectRenderPayload() {
     const isParts = state.mode === 'parts';
@@ -349,7 +366,7 @@
     };
   }
 
-  async function startStudioJob() {
+  async function startCreateJob() {
     const p = collectRenderPayload();
     try {
       $('#run-btn').disabled = true;
@@ -363,7 +380,7 @@
           body: JSON.stringify({ url, ...p }),
         });
       } else {
-        if (!state.selectedFile) throw new Error('Выберите видеофайл слева');
+        if (!state.selectedFile) throw new Error('Сначала выберите видеофайл');
         const fd = new FormData();
         fd.append('file', state.selectedFile);
         Object.entries(p).forEach(([k, v]) => fd.append(k, String(v)));
@@ -372,8 +389,10 @@
       state.activeJobId = res.job_id;
       $('#cancel-job-btn').hidden = false;
       $('#open-folder-btn').hidden = true;
-      switchBin('logs');
-      toast('Задача запущена', 'ok');
+      $('#goto-clips-btn').hidden = true;
+      $('#job-terminal').hidden = false;
+      $('#toggle-log-btn').textContent = 'Скрыть лог';
+      toast('Сборка запущена', 'ok');
       await pollAll();
     } catch (e) {
       toast(e.message, 'err');
@@ -381,31 +400,15 @@
     }
   }
 
-  function stageIndexFromJob(job) {
-    const st = `${job.step || ''} ${job.message || ''}`.toLowerCase();
-    const pct = Number(job.progress || 0);
-    if (job.status === 'done' || pct >= 100) return 4;
-    if (st.includes('рендер') || st.includes('клип') || st.includes('субтитр') || pct >= 55) return 3;
-    if (st.includes('подбор') || st.includes('сценари') || st.includes('озвуч') || st.includes('част') || pct >= 35) return 2;
-    if (st.includes('речь') || st.includes('whisper') || pct >= 18) return 1;
-    return 0;
-  }
-
   function renderStudioJob(job) {
     if (!job) return;
     const pct = Math.max(0, Math.min(100, Math.round(Number(job.progress || 0))));
     $('#job-pct-badge').textContent = `${pct}%`;
     $('#job-step-name').textContent = job.step || job.kind || 'Задача';
-    $('#job-step-msg').textContent = job.message || job.error || 'Выполняется…';
+    $('#job-step-msg').textContent = job.error || job.message || 'Выполняется…';
     $('#job-progress-fill').style.width = `${pct}%`;
     const elapsed = job.finished_at ? (job.finished_at - job.created_at) : (Date.now() / 1000 - (job.created_at || Date.now() / 1000));
     $('#job-elapsed').textContent = fmtSec(elapsed);
-
-    const activeIdx = stageIndexFromJob(job);
-    $$('#pipeline-stepper span').forEach((sp, i) => {
-      sp.classList.toggle('is-done', job.status === 'done' ? true : i < activeIdx);
-      sp.classList.toggle('is-active', job.status === 'running' && i === activeIdx);
-    });
 
     const term = $('#job-terminal');
     term.textContent = (job.logs || []).join('\n') || job.error || job.message || '';
@@ -415,12 +418,12 @@
     $('#run-btn').disabled = busy;
     $('#cancel-job-btn').hidden = !busy;
     $('#open-folder-btn').hidden = job.status !== 'done';
+    $('#goto-clips-btn').hidden = job.status !== 'done';
 
     if (job.status === 'done' && job.result && Array.isArray(job.result.clips)) {
       if (state.currentClipsJobId !== job.id || state.currentJobClips.length !== job.result.clips.length) {
-        setClipDeck(job.id, job.result.clips, job.result.source || '');
-        switchBin('clips');
-        if (job.result.clips[0]) loadClipIntoStage(job.result.clips[0]);
+        setClipDeck(job.id, job.result.clips);
+        if (job.result.clips[0]) loadClipIntoInspector(job.result.clips[0]);
       }
     }
   }
@@ -481,7 +484,7 @@
         gpill.hidden = false;
         $('#global-job-text').textContent = running.step || running.kind;
         $('#global-job-pct').textContent = `${Math.round(Number(running.progress || 0))}%`;
-        gpill.onclick = () => switchTab(running.kind === 'login' || running.kind === 'download_model' ? 'settings' : running.kind === 'upload' ? 'upload' : 'studio');
+        gpill.onclick = () => switchTab(running.kind === 'login' || running.kind === 'download_model' ? 'settings' : running.kind === 'upload' ? 'publish' : 'create');
       } else {
         gpill.hidden = true;
       }
@@ -508,46 +511,75 @@
       if (state.tab === 'settings' && state.jobs.some((j) => j.kind === 'download_model' && j.status === 'running')) {
         await loadModels();
       }
-      if (state.tab === 'history') renderHistory();
     } catch {
-      // ignore transient poll error
+      // retry silently
     }
   }
 
-  // ------------------------------------------------------------------ clip bin & stage player
+  // ------------------------------------------------------------------ clips gallery & editor
 
-  function setClipDeck(jobId, clips, source = '') {
+  async function syncClipsTab() {
+    const { jobs } = await api('/api/jobs?limit=40');
+    state.jobs = jobs || [];
+    const doneJobs = state.jobs.filter((j) => (j.kind === 'analyze' || j.kind === 'youtube') && j.status === 'done');
+    const q = ($('#hist-search').value || '').trim().toLowerCase();
+    const sel = $('#clips-job-select');
+    const prev = state.currentClipsJobId || sel.value;
+    sel.innerHTML = '';
+
+    const filtered = doneJobs.filter((j) => !q || `${j.id} ${JSON.stringify(j.meta || {})}`.toLowerCase().includes(q));
+    if (!filtered.length) {
+      sel.innerHTML = '<option value="">Нет готовых нарезок</option>';
+      setClipDeck('', []);
+      return;
+    }
+    filtered.forEach((j) => {
+      const cnt = j.result && j.result.clips ? j.result.clips.length : '?';
+      const title = (j.meta && (j.meta.source || j.meta.url)) || j.id;
+      sel.appendChild(new Option(`${title} (${cnt} кл.)`, j.id));
+    });
+    if (prev && filtered.some((j) => j.id === prev)) sel.value = prev;
+    await loadClipsForJob(sel.value);
+  }
+
+  async function loadClipsForJob(jobId) {
+    if (!jobId) return;
+    const data = await api(`/api/clips?job_id=${encodeURIComponent(jobId)}`);
+    setClipDeck(jobId, data.clips || []);
+    if (data.clips && data.clips[0]) loadClipIntoInspector(data.clips[0]);
+  }
+
+  function setClipDeck(jobId, clips) {
     state.currentClipsJobId = jobId;
     state.currentJobClips = clips || [];
     state.selectedClipIds = new Set(state.currentJobClips.map((c) => String(c.id)));
-    $('#deck-count').textContent = String(state.currentJobClips.length);
-    $('#deck-source').textContent = source ? `Источник: ${source}` : `Задача #${jobId}`;
-    renderClipDeck();
-    syncUploadPanel();
+    $('#nav-clips-badge').textContent = String(state.currentJobClips.length);
+    $('#nav-clips-badge').hidden = state.currentJobClips.length === 0;
+    renderClipsGrid();
   }
 
-  function loadClipIntoStage(clip) {
+  function loadClipIntoInspector(clip) {
     state.editingClip = clip;
     state.playingClipId = String(clip.id);
+    $('#insp-clip-heading').textContent = clip.title || `Клип #${clip.id}`;
+    $('#insp-clip-dur').textContent = fmtSec(clip.duration);
     $('#stage-video').src = `${clip.video_url}?t=${Date.now()}`;
     $('#ce-title').value = clip.title || '';
     $('#ce-hook').value = clip.hook || '';
     $('#ce-tags').value = clip.hashtags || '';
     $('#ce-start').value = String(clip.start ?? 0);
     $('#ce-end').value = String(clip.end ?? clip.duration ?? 30);
-    $('#stage-telemetry').textContent = `${clip.title || `Клип #${clip.id}`} · ${fmtSec(clip.duration)}`;
-    setStageView('player');
-    renderClipDeck();
+    renderClipsGrid();
   }
 
-  function renderClipDeck() {
+  function renderClipsGrid() {
     const grid = $('#clips-grid');
     $('#deck-selected-count').textContent = String(state.selectedClipIds.size);
-    $('#nav-upload-count').textContent = String(state.selectedClipIds.size);
-    $('#nav-upload-count').hidden = state.selectedClipIds.size === 0;
+    $('#nav-pub-badge').textContent = String(state.selectedClipIds.size);
+    $('#nav-pub-badge').hidden = state.selectedClipIds.size === 0;
 
     if (!state.currentJobClips.length) {
-      grid.innerHTML = '<div class="empty-box">Запустите нарезку слева — клипы сразу загрузятся сюда.</div>';
+      grid.innerHTML = '<div class="empty-glass">Пока нет готовых клипов. Создайте нарезку на вкладке «Создать».</div>';
       return;
     }
 
@@ -556,103 +588,85 @@
       const cid = String(clip.id);
       const checked = state.selectedClipIds.has(cid);
       const playing = state.playingClipId === cid;
-      const card = document.createElement('div');
-      card.className = `bin-card ${checked ? 'is-selected' : ''} ${playing ? 'is-playing' : ''}`;
+      const card = document.createElement('article');
+      card.className = `clip-poster-card ${checked ? 'is-selected' : ''} ${playing ? 'is-playing' : ''}`;
       card.innerHTML = `
-        <div class="bin-thumb">
+        <div class="cp-img-wrap">
           <img src="${esc(clip.preview_url)}?t=${Date.now()}" alt="">
-          <input class="bin-check" type="checkbox" ${checked ? 'checked' : ''}>
-        </div>
-        <div class="bin-meta">
-          <div class="bin-title">${esc(clip.title || `Клип #${cid}`)}</div>
-          <div class="bin-sub">${esc(clip.hook || '')}</div>
-          <div class="bin-foot">
-            <span class="mono muted-xs">${esc(fmtSec(clip.duration))}</span>
-            <button class="btn-ghost-xs bin-pub" type="button">Загрузить</button>
+          <div class="cp-top">
+            <input type="checkbox" ${checked ? 'checked' : ''}>
+            <span class="cp-dur">${esc(fmtSec(clip.duration))}</span>
           </div>
         </div>
+        <div class="cp-body">
+          <div class="cp-title">${esc(clip.title || `Клип #${cid}`)}</div>
+          <div class="cp-hook">${esc(clip.hook || '')}</div>
+        </div>
       `;
-      card.querySelector('.bin-check').addEventListener('click', (e) => {
+      card.querySelector('input').addEventListener('click', (e) => {
         e.stopPropagation();
         if (e.target.checked) state.selectedClipIds.add(cid);
         else state.selectedClipIds.delete(cid);
         card.classList.toggle('is-selected', e.target.checked);
         $('#deck-selected-count').textContent = String(state.selectedClipIds.size);
-        $('#nav-upload-count').textContent = String(state.selectedClipIds.size);
-        $('#nav-upload-count').hidden = state.selectedClipIds.size === 0;
+        $('#nav-pub-badge').textContent = String(state.selectedClipIds.size);
+        $('#nav-pub-badge').hidden = state.selectedClipIds.size === 0;
       });
-      card.querySelector('.bin-pub').addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.selectedClipIds = new Set([cid]);
-        renderClipDeck();
-        switchTab('upload');
-      });
-      card.addEventListener('click', () => loadClipIntoStage(clip));
+      card.addEventListener('click', () => loadClipIntoInspector(clip));
       grid.appendChild(card);
     });
   }
 
   async function saveClipMetadata() {
     if (!state.editingClip || !state.currentClipsJobId) return;
-    const cid = state.editingClip.id;
-    try {
-      await api(`/api/clips/${encodeURIComponent(state.currentClipsJobId)}/${encodeURIComponent(cid)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: $('#ce-title').value.trim(),
-          hook: $('#ce-hook').value.trim(),
-          hashtags: $('#ce-tags').value.trim(),
-        }),
-      });
-      const fresh = await api(`/api/clips?job_id=${encodeURIComponent(state.currentClipsJobId)}`);
-      setClipDeck(state.currentClipsJobId, fresh.clips || [], fresh.source || '');
-      toast('Сохранено', 'ok');
-    } catch (e) {
-      toast(e.message, 'err');
-    }
+    await api(`/api/clips/${encodeURIComponent(state.currentClipsJobId)}/${encodeURIComponent(state.editingClip.id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: $('#ce-title').value.trim(),
+        hook: $('#ce-hook').value.trim(),
+        hashtags: $('#ce-tags').value.trim(),
+      }),
+    });
+    const fresh = await api(`/api/clips?job_id=${encodeURIComponent(state.currentClipsJobId)}`);
+    setClipDeck(state.currentClipsJobId, fresh.clips || []);
+    toast('Сохранено', 'ok');
   }
 
   async function recutClip() {
     if (!state.editingClip || !state.currentClipsJobId) return;
-    const cid = state.editingClip.id;
+    $('#ce-recut-btn').disabled = true;
     try {
-      $('#ce-recut-btn').disabled = true;
-      const res = await api(`/api/clips/${encodeURIComponent(state.currentClipsJobId)}/${encodeURIComponent(cid)}/recut`, {
+      const res = await api(`/api/clips/${encodeURIComponent(state.currentClipsJobId)}/${encodeURIComponent(state.editingClip.id)}/recut`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ start: Number($('#ce-start').value), end: Number($('#ce-end').value) }),
       });
-      if (res.clip) loadClipIntoStage(res.clip);
+      if (res.clip) loadClipIntoInspector(res.clip);
       const fresh = await api(`/api/clips?job_id=${encodeURIComponent(state.currentClipsJobId)}`);
-      setClipDeck(state.currentClipsJobId, fresh.clips || [], fresh.source || '');
+      setClipDeck(state.currentClipsJobId, fresh.clips || []);
       toast('Клип перерезан', 'ok');
-    } catch (e) {
-      toast(e.message, 'err');
     } finally {
       $('#ce-recut-btn').disabled = false;
     }
   }
 
-  // ------------------------------------------------------------------ upload & history
+  // ------------------------------------------------------------------ publish
 
   async function syncUploadPanel() {
     const { jobs } = await api('/api/jobs?limit=30');
     const doneJobs = (jobs || []).filter((j) => (j.kind === 'analyze' || j.kind === 'youtube') && j.status === 'done');
     const sel = $('#up-job-select');
-    const curVal = state.currentClipsJobId || sel.value;
+    const cur = state.currentClipsJobId || sel.value;
     sel.innerHTML = '';
     if (!doneJobs.length) {
       sel.innerHTML = '<option value="">Нет завершённых нарезок</option>';
-      $('#up-clip-list').innerHTML = '<div class="empty-box">Сначала соберите клипы в Студии.</div>';
+      $('#up-clip-list').innerHTML = '<div class="empty-glass">Сначала создайте клипы.</div>';
       $('#up-sel-count').textContent = '0';
       return;
     }
-    doneJobs.forEach((j) => {
-      const cnt = j.result && j.result.clips ? j.result.clips.length : '?';
-      sel.appendChild(new Option(`${(j.meta && (j.meta.source || j.meta.url)) || j.id} (${cnt} кл.)`, j.id));
-    });
-    if (curVal && doneJobs.some((j) => j.id === curVal)) sel.value = curVal;
+    doneJobs.forEach((j) => sel.appendChild(new Option(`${(j.meta && (j.meta.source || j.meta.url)) || j.id}`, j.id)));
+    if (cur && doneJobs.some((j) => j.id === cur)) sel.value = cur;
     await loadUploadJobClips(sel.value);
   }
 
@@ -661,12 +675,12 @@
     const data = await api(`/api/clips?job_id=${encodeURIComponent(jobId)}`);
     const clips = data.clips || [];
     const list = $('#up-clip-list');
-    list.innerHTML = clips.length ? '' : '<div class="empty-box">Нет клипов</div>';
+    list.innerHTML = clips.length ? '' : '<div class="empty-glass">Нет клипов</div>';
     clips.forEach((c) => {
       const cid = String(c.id);
       const checked = state.currentClipsJobId === jobId ? state.selectedClipIds.has(cid) : true;
       const row = document.createElement('label');
-      row.className = 'check-tile';
+      row.className = 'toggle-tile';
       row.innerHTML = `<input type="checkbox" value="${esc(cid)}" ${checked ? 'checked' : ''}><span><strong>${esc(c.title || `Клип #${cid}`)}</strong> <span class="muted-xs">(${esc(fmtSec(c.duration))})</span></span>`;
       row.querySelector('input').addEventListener('change', updateUploadCount);
       list.appendChild(row);
@@ -684,7 +698,6 @@
     if (engine === 'plain') { row.hidden = true; return; }
     row.hidden = false;
     const sel = $('#up-profile-id');
-    sel.innerHTML = '<option value="">Загрузка…</option>';
     const data = await api(`/api/browsers?engine=${encodeURIComponent(engine)}`);
     sel.innerHTML = '';
     if (!data.running) { sel.innerHTML = `<option value="">${esc(data.error || 'Не запущен')}</option>`; return; }
@@ -714,49 +727,7 @@
     await pollAll();
   }
 
-  async function loadJobs() {
-    state.jobs = (await api('/api/jobs?limit=50')).jobs || [];
-    renderHistory();
-  }
-
-  function renderHistory() {
-    const wrap = $('#history-list');
-    const q = ($('#hist-search').value || '').trim().toLowerCase();
-    const filt = $('#hist-filter').value || 'all';
-    const items = (state.jobs || []).filter((j) => {
-      if (filt === 'clipping' && j.kind !== 'analyze' && j.kind !== 'youtube') return false;
-      if (filt === 'login' && j.kind !== 'login') return false;
-      if (filt === 'upload' && j.kind !== 'upload') return false;
-      if (!q) return true;
-      return `${j.id} ${j.kind} ${j.step} ${j.message} ${JSON.stringify(j.meta || {})}`.toLowerCase().includes(q);
-    });
-    wrap.innerHTML = items.length ? '' : '<div class="empty-box">Нет задач по фильтру</div>';
-    items.forEach((j) => {
-      const row = document.createElement('div');
-      row.className = 'hist-row';
-      const cls = j.status === 'done' ? 'is-done' : j.status === 'error' ? 'is-err' : '';
-      row.innerHTML = `
-        <div class="row-gap"><span class="kind-pill ${cls}">${esc(j.kind)} · ${esc(j.status)}</span><strong>${esc((j.meta && (j.meta.source || j.meta.url || j.meta.provider)) || j.kind)}</strong></div>
-        <div class="muted-xs">${esc(j.message || j.error || j.step || '')}</div>
-        <div class="row-gap"><span class="mono muted-xs">${Math.round(Number(j.progress || 0))}%</span></div>
-      `;
-      if ((j.kind === 'analyze' || j.kind === 'youtube') && j.status === 'done') {
-        const b = document.createElement('button');
-        b.className = 'btn-ghost-xs';
-        b.type = 'button';
-        b.textContent = 'Открыть';
-        b.addEventListener('click', async () => {
-          state.activeJobId = j.id;
-          renderStudioJob(await api(`/api/jobs/${encodeURIComponent(j.id)}`));
-          switchTab('studio');
-        });
-        row.lastElementChild.appendChild(b);
-      }
-      wrap.appendChild(row);
-    });
-  }
-
-  // ------------------------------------------------------------------ settings & accounts
+  // ------------------------------------------------------------------ settings
 
   async function loadSettingsBundle() {
     await Promise.all([refreshAccountsOnly(), loadModels()]);
@@ -773,20 +744,20 @@
   function renderAccounts() {
     const grid = $('#accounts-grid');
     const activeAccId = (state.settings && state.settings.llm && state.settings.llm.account_id) || '';
-    grid.innerHTML = state.accounts.length ? '' : '<div class="empty-box">Аккаунты не подключены. Нажмите кнопку входа справа сверху.</div>';
+    grid.innerHTML = state.accounts.length ? '' : '<div class="empty-glass">Нет подключённых аккаунтов. Войдите кнопками выше.</div>';
     state.accounts.forEach((acc) => {
       const isAct = acc.id === activeAccId;
       const card = document.createElement('div');
-      card.className = `acc-card ${isAct ? 'is-active' : ''}`;
+      card.className = `acc-item ${isAct ? 'is-active' : ''}`;
       card.innerHTML = `
-        <div class="lbl-row">
+        <div class="head-sub">
           <div><strong>${esc(acc.label || acc.email || acc.provider)}</strong><div class="muted-xs">${esc(acc.provider)} · ${esc(acc.auth_method)}</div></div>
-          <span class="kind-pill ${isAct ? 'is-done' : ''}">${isAct ? 'Активен' : esc(acc.status || 'готов')}</span>
+          <span class="aspect-pill">${isAct ? 'Активен' : esc(acc.status || 'готов')}</span>
         </div>
         <div class="row-gap">
-          <button class="btn-indigo-xs acc-use" type="button">${isAct ? 'Выбран' : 'Выбрать'}</button>
-          <button class="btn-ghost-xs acc-test" type="button">Тест</button>
-          <button class="btn-ghost-xs acc-del" type="button">Удалить</button>
+          <button class="btn-aurora-sm acc-use" type="button">${isAct ? 'Выбран' : 'Выбрать'}</button>
+          <button class="btn-soft-sm acc-test" type="button">Тест</button>
+          <button class="btn-danger acc-del" type="button">Удалить</button>
         </div>
       `;
       card.querySelector('.acc-use').addEventListener('click', async () => {
@@ -802,7 +773,7 @@
       card.querySelector('.acc-del').addEventListener('click', async () => {
         await api(`/api/accounts/${encodeURIComponent(acc.id)}`, { method: 'DELETE' });
         await refreshAccountsOnly();
-        toast('Аккаунт удалён', 'ok');
+        toast('Удалено', 'ok');
       });
       grid.appendChild(card);
     });
@@ -816,7 +787,7 @@
         body: JSON.stringify({ provider, auth_method: authMethod }),
       });
       state.activeAuthJobId = res.job_id;
-      toast('Окно авторизации запускается…', 'ok');
+      toast('Авторизация запущена…', 'ok');
       await pollAll();
     } catch (e) {
       toast(e.message, 'err');
@@ -873,14 +844,11 @@
       const isInst = Boolean(inst && inst.complete);
       const row = document.createElement('div');
       row.className = 'model-row';
-      row.innerHTML = `
-        <div><strong>${esc(info.label || sz)}</strong> <span class="muted-xs">${esc(fmtBytes(info.bytes))}</span> ${sz === curSize ? '<span class="kind-pill is-done">активна</span>' : ''}<div class="muted-xs">${esc(info.note || '')}</div></div>
-        <div class="row-gap"></div>
-      `;
+      row.innerHTML = `<div><strong>${esc(info.label || sz)}</strong> <span class="muted-xs">${esc(fmtBytes(info.bytes))}</span> ${sz === curSize ? '<span class="aspect-pill">активна</span>' : ''}<div class="muted-xs">${esc(info.note || '')}</div></div><div class="row-gap"></div>`;
       const btns = row.lastElementChild;
       if (isInst && sz !== curSize) {
         const u = document.createElement('button');
-        u.className = 'btn-indigo-xs';
+        u.className = 'btn-aurora-sm';
         u.type = 'button';
         u.textContent = 'Выбрать';
         u.addEventListener('click', async () => {
@@ -891,7 +859,7 @@
         btns.appendChild(u);
       }
       const b = document.createElement('button');
-      b.className = isInst ? 'btn-danger' : 'btn-ghost-xs';
+      b.className = isInst ? 'btn-danger' : 'btn-soft-sm';
       b.type = 'button';
       b.textContent = isInst ? 'Удалить' : 'Скачать';
       b.addEventListener('click', async () => {
@@ -939,20 +907,22 @@
     toast('Настройки сохранены', 'ok');
   }
 
-  function playVoiceAudio(voiceId) {
-    const audio = $('#voice-sample-audio');
-    audio.src = `/api/voices/${encodeURIComponent(voiceId)}/sample?t=${Date.now()}`;
-    audio.play().catch((e) => toast(e.message, 'err'));
+  function playAudioUrl(url) {
+    const a = $('#audio-preview');
+    if (!a.paused && a.src.includes(url.split('?')[0])) {
+      a.pause();
+      return;
+    }
+    a.src = url;
+    a.play().catch((e) => toast(e.message, 'err'));
   }
 
   // ------------------------------------------------------------------ events
 
   function bindEvents() {
-    $$('.tb-tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-    $$('[data-jump-settings]').forEach((b) => b.addEventListener('click', () => switchTab('settings')));
-    $$('.insp-tab').forEach((b) => b.addEventListener('click', () => switchInsp(b.dataset.insp)));
-    $$('.bin-tab').forEach((b) => b.addEventListener('click', () => switchBin(b.dataset.bin)));
-    $$('[data-stage-view]').forEach((b) => b.addEventListener('click', () => setStageView(b.dataset.stageView)));
+    $$('.pill-tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    $$('[data-goto-settings]').forEach((b) => b.addEventListener('click', () => switchTab('settings')));
+    $$('.recipe-card').forEach((b) => b.addEventListener('click', () => applyRecipe(b.dataset.recipe)));
 
     $$('[data-src-mode]').forEach((b) => {
       b.addEventListener('click', () => {
@@ -971,9 +941,22 @@
       state.selectedFile = f;
       dz.classList.add('has-file');
       $('#drop-title').textContent = f.name;
-      $('#drop-sub').textContent = fmtBytes(f.size);
+      $('#drop-sub').textContent = `${fmtBytes(f.size)} · предпросмотр активен справа`;
       $('#clear-file-btn').hidden = false;
+
+      if (state.localObjectUrl) URL.revokeObjectURL(state.localObjectUrl);
+      state.localObjectUrl = URL.createObjectURL(f);
+      const fg = $('#preview-fg-video');
+      const bg = $('#preview-bg-video');
+      fg.src = state.localObjectUrl;
+      bg.src = state.localObjectUrl;
+      fg.hidden = false;
+      bg.hidden = false;
+      $('#preview-demo-art').hidden = true;
+      fg.play().catch(() => {});
+      bg.play().catch(() => {});
     };
+
     dz.addEventListener('click', (e) => { if (e.target.id !== 'clear-file-btn') fi.click(); });
     dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('is-drag'); });
     dz.addEventListener('dragleave', () => dz.classList.remove('is-drag'));
@@ -982,9 +965,14 @@
     $('#clear-file-btn').addEventListener('click', () => {
       state.selectedFile = null;
       fi.value = '';
+      if (state.localObjectUrl) URL.revokeObjectURL(state.localObjectUrl);
+      state.localObjectUrl = '';
+      $('#preview-fg-video').hidden = true;
+      $('#preview-bg-video').hidden = true;
+      $('#preview-demo-art').hidden = false;
       dz.classList.remove('has-file');
-      $('#drop-title').textContent = 'Выбрать или перетащить видео';
-      $('#drop-sub').textContent = 'MP4, MOV, MKV, WebM';
+      $('#drop-title').textContent = 'Перетащите видео сюда или нажмите для выбора';
+      $('#drop-sub').textContent = 'Локальное видео сразу загрузится в предпросмотр 9:16 справа';
       $('#clear-file-btn').hidden = true;
     });
 
@@ -992,24 +980,17 @@
       try { $('#yt-url').value = await navigator.clipboard.readText(); } catch { toast('Нажмите Ctrl+V', 'info'); }
     });
 
-    $$('[data-preset="brainrot"]').forEach((b) => b.addEventListener('click', () => {
-      setMode('brainrot');
-      setFraming('blur');
-      setStyle('drama');
-      setEffect('aura');
-      if ($$('#opt-voice option').some((o) => o.value === 'canon_bright')) {
-        $('#opt-voice').value = 'canon_bright';
-        updateVoiceNote();
-      }
-      if ($$('#opt-music option').some((o) => o.value === 'drama-guzheng')) $('#opt-music').value = 'drama-guzheng';
-      updateStagePreview();
-      toast('Пресет китайской дорамы включён', 'ok');
-    }));
+    $$('#mode-switch [data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+    $$('.step-op').forEach((b) => {
+      b.addEventListener('click', () => {
+        const inp = $('#opt-clips');
+        inp.value = String(Math.max(1, Math.min(20, Number(inp.value || 5) + Number(b.dataset.step))));
+      });
+    });
 
-    $$('#mode-stack .mode-item').forEach((c) => c.addEventListener('click', () => setMode(c.dataset.mode)));
-    $$('#framing-pills .chip').forEach((b) => b.addEventListener('click', () => setFraming(b.dataset.framing)));
-    $$('#style-pills .chip').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
-    $$('#part-presets .chip').forEach((b) => b.addEventListener('click', () => setPartSeconds(b.dataset.sec)));
+    $$('#framing-pills .v-card').forEach((b) => b.addEventListener('click', () => setFraming(b.dataset.framing)));
+    $$('#style-pills .st-swatch').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
+    $$('#part-presets .tap-pill').forEach((b) => b.addEventListener('click', () => setPartSeconds(b.dataset.sec)));
     $('#part-sec-range').addEventListener('input', (e) => setPartSeconds(e.target.value));
 
     $('#opt-dur-preset').addEventListener('change', (e) => {
@@ -1028,27 +1009,37 @@
     $('#opt-music-vol').addEventListener('input', (e) => { $('#music-vol-label').textContent = `${e.target.value}%`; });
     $('#opt-orig-vol').addEventListener('input', (e) => { $('#orig-vol-label').textContent = `${e.target.value}%`; });
 
-    $('#preview-voice-btn').addEventListener('click', () => playVoiceAudio($('#opt-voice').value || 'canon_bright'));
-    $('#play-canon-1').addEventListener('click', () => playVoiceAudio('canon_bright'));
-    $('#play-canon-2').addEventListener('click', () => playVoiceAudio('canon_deep'));
+    $('#preview-voice-btn').addEventListener('click', () => playAudioUrl(`/api/voices/${encodeURIComponent($('#opt-voice').value || 'canon_bright')}/sample?t=${Date.now()}`));
+    $('#preview-music-btn').addEventListener('click', () => {
+      const m = $('#opt-music').value;
+      if (!m || m === 'none') return toast('Сначала выберите музыкальный трек', 'info');
+      playAudioUrl(`/api/music/${encodeURIComponent(m)}?t=${Date.now()}`);
+    });
+    $('#play-canon-1').addEventListener('click', () => playAudioUrl(`/api/voices/canon_bright/sample?t=${Date.now()}`));
+    $('#play-canon-2').addEventListener('click', () => playAudioUrl(`/api/voices/canon_deep/sample?t=${Date.now()}`));
 
-    $('#run-btn').addEventListener('click', startStudioJob);
+    $('#run-btn').addEventListener('click', startCreateJob);
     $('#cancel-job-btn').addEventListener('click', async () => {
       if (state.activeJobId) await api(`/api/jobs/${encodeURIComponent(state.activeJobId)}/cancel`, { method: 'POST' });
     });
-    $('#copy-log-btn').addEventListener('click', async () => {
-      await navigator.clipboard.writeText($('#job-terminal').textContent);
-      toast('Лог скопирован', 'ok');
+    $('#toggle-log-btn').addEventListener('click', () => {
+      const t = $('#job-terminal');
+      t.hidden = !t.hidden;
+      $('#toggle-log-btn').textContent = t.hidden ? 'Показать лог' : 'Скрыть лог';
     });
     $('#open-folder-btn').addEventListener('click', async () => {
-      if (state.currentClipsJobId || state.activeJobId) {
-        await api('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job_id: state.currentClipsJobId || state.activeJobId }) });
-      }
+      const id = state.currentClipsJobId || state.activeJobId;
+      if (id) await api('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job_id: id }) });
     });
+    $('#goto-clips-btn').addEventListener('click', () => switchTab('clips'));
 
-    $('#deck-select-all').addEventListener('click', () => { state.selectedClipIds = new Set(state.currentJobClips.map((c) => String(c.id))); renderClipDeck(); });
-    $('#deck-select-none').addEventListener('click', () => { state.selectedClipIds.clear(); renderClipDeck(); });
-    $('#deck-to-upload-btn').addEventListener('click', () => switchTab('upload'));
+    // Clips tab
+    $('#clips-job-select').addEventListener('change', (e) => loadClipsForJob(e.target.value));
+    $('#hist-search').addEventListener('input', syncClipsTab);
+    $('#clips-refresh-btn').addEventListener('click', syncClipsTab);
+    $('#deck-select-all').addEventListener('click', () => { state.selectedClipIds = new Set(state.currentJobClips.map((c) => String(c.id))); renderClipsGrid(); });
+    $('#deck-select-none').addEventListener('click', () => { state.selectedClipIds.clear(); renderClipsGrid(); });
+    $('#deck-to-upload-btn').addEventListener('click', () => switchTab('publish'));
     $('#deck-apply-int-btn').addEventListener('click', async () => {
       const intId = $('#deck-int-select').value;
       const clipIds = Array.from(state.selectedClipIds);
@@ -1061,10 +1052,12 @@
       state.activeJobId = res.job_id;
       toast('Вшивание рекламы запущено', 'ok');
     });
-
     $('#ce-save-btn').addEventListener('click', saveClipMetadata);
     $('#ce-recut-btn').addEventListener('click', recutClip);
 
+    // Modal integration
+    $('#open-int-modal-btn').addEventListener('click', () => { $('#int-modal').hidden = false; });
+    $('#close-int-modal').addEventListener('click', () => { $('#int-modal').hidden = true; });
     $('#int-upload-btn').addEventListener('click', async () => {
       const file = $('#int-file').files[0];
       if (!file) return toast('Выберите файл рекламы', 'err');
@@ -1085,6 +1078,7 @@
       toast('Интеграция сохранена', 'ok');
     });
 
+    // Publish
     $('#up-job-select').addEventListener('change', (e) => loadUploadJobClips(e.target.value));
     $('#up-toggle-all').addEventListener('click', () => {
       const bs = $$('#up-clip-list input');
@@ -1097,10 +1091,7 @@
     $('#up-dry-btn').addEventListener('click', () => runBatchUpload(true));
     $('#up-publish-btn').addEventListener('click', () => runBatchUpload(false));
 
-    $('#hist-search').addEventListener('input', renderHistory);
-    $('#hist-filter').addEventListener('change', renderHistory);
-    $('#hist-refresh-btn').addEventListener('click', loadJobs);
-
+    // Settings
     $('#login-chatgpt-oauth').addEventListener('click', () => startAccountLogin('chatgpt', 'oauth'));
     $('#login-chatgpt-browser').addEventListener('click', () => startAccountLogin('chatgpt', 'browser'));
     $('#login-google-browser').addEventListener('click', () => startAccountLogin('google', 'browser'));
@@ -1113,7 +1104,6 @@
         toast('Ссылка скопирована', 'ok');
       }
     });
-
     $('#set-provider').addEventListener('change', syncModelOptions);
     $('#test-provider-btn').addEventListener('click', async () => {
       const st = $('#provider-test-status');
@@ -1137,7 +1127,7 @@
 
   async function init() {
     bindEvents();
-    await Promise.all([loadHealth(), loadLooksAndSettings(), loadJobs()]);
+    await Promise.all([loadHealth(), loadLooksAndSettings(), pollAll()]);
     state.pollTimer = setInterval(pollAll, 1200);
   }
 

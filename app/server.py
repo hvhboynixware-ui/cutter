@@ -875,6 +875,15 @@ def voice_sample(voice_id: str) -> FileResponse:
     return FileResponse(cache, media_type="audio/mpeg")
 
 
+@app.get("/api/music/{track_id}")
+def music_sample(track_id: str) -> FileResponse:
+    from .core import effects as FX
+    path = FX.music_path(_safe_id(track_id))
+    if not path or not path.is_file():
+        raise HTTPException(404, "трек не найден")
+    return FileResponse(path, media_type="audio/mpeg")
+
+
 @app.get("/")
 def index() -> HTMLResponse:
     return HTMLResponse(

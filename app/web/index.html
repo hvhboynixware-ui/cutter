@@ -3,427 +3,429 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Cutter Workbench</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%236366f1'/><path d='M7 5v14M12 8v8M17 5v14' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round'/></svg>">
-  <link rel="stylesheet" href="/assets/fonts.css?v=2">
-  <link rel="stylesheet" href="/assets/app.css?v=2">
+  <title>Cutter Studio</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%238b5cf6'/><stop offset='1' stop-color='%2306b6d4'/></linearGradient></defs><rect width='24' height='24' rx='6' fill='url(%23g)'/><path d='M7 6v12M12 4v16M17 8v8' stroke='%23fff' stroke-width='2.3' stroke-linecap='round'/></svg>">
+  <link rel="stylesheet" href="/assets/fonts.css?v=3">
+  <link rel="stylesheet" href="/assets/app.css?v=3">
 </head>
 <body>
-<div class="nle-app">
+<div class="aurora-bg" aria-hidden="true"></div>
 
-  <!-- ============================= TOP CHROME (46px) ============================= -->
-  <header class="nle-topbar">
-    <div class="tb-left">
-      <div class="tb-logo">
-        <span class="tb-mark" aria-hidden="true"></span>
-        <strong>Cutter</strong>
-        <span class="tb-ver" id="brand-ver">v1.1.0</span>
+<div class="shell">
+
+  <!-- ============================= FLOATING GLASS HEADER ============================= -->
+  <header class="dock-header">
+    <div class="brand-cluster">
+      <div class="brand-orb" aria-hidden="true">
+        <span></span><span></span><span></span>
       </div>
-      <nav class="tb-nav" role="tablist">
-        <button class="tb-tab is-active" data-tab="studio" role="tab">Студия</button>
-        <button class="tb-tab" data-tab="upload" role="tab">Публикация <span class="tb-badge" id="nav-upload-count" hidden>0</span></button>
-        <button class="tb-tab" data-tab="history" role="tab">История</button>
-        <button class="tb-tab" data-tab="settings" role="tab">Настройки</button>
-      </nav>
+      <div class="brand-copy">
+        <strong>Cutter</strong>
+        <small id="brand-ver">v1.1.0</small>
+      </div>
     </div>
 
-    <div class="tb-right">
-      <button class="tb-live-pill" id="global-job-pill" hidden>
-        <span class="live-dot"></span>
-        <span id="global-job-text">В работе</span>
-        <strong id="global-job-pct">0%</strong>
+    <nav class="pill-nav" role="tablist" aria-label="Разделы">
+      <button class="pill-tab is-active" data-tab="create" role="tab">Создать</button>
+      <button class="pill-tab" data-tab="clips" role="tab">
+        Клипы <span class="tab-badge" id="nav-clips-badge" hidden>0</span>
       </button>
-      <div class="tb-status-strip">
-        <button class="st-pill" id="tel-llm" type="button" data-jump-settings="sec-accounts">ИИ: —</button>
-        <button class="st-pill" id="tel-whisper" type="button" data-jump-settings="sec-models">Речь: —</button>
-        <button class="st-pill" id="tel-encoder" type="button" data-jump-settings="sec-system">Рендер: —</button>
-        <button class="st-pill" id="tel-browser" type="button" data-jump-settings="sec-accounts">Браузер: —</button>
-      </div>
+      <button class="pill-tab" data-tab="publish" role="tab">
+        Публикация <span class="tab-badge" id="nav-pub-badge" hidden>0</span>
+      </button>
+      <button class="pill-tab" data-tab="settings" role="tab">Настройки</button>
+    </nav>
+
+    <div class="status-cluster">
+      <button class="live-job-btn" id="global-job-pill" hidden>
+        <i class="live-pulse"></i>
+        <span id="global-job-text">Рендер…</span>
+        <b id="global-job-pct">0%</b>
+      </button>
+      <button class="chip-status" id="tel-llm" type="button" data-goto-settings>ИИ: —</button>
+      <button class="chip-status" id="tel-whisper" type="button" data-goto-settings>Речь: —</button>
+      <button class="chip-status" id="tel-encoder" type="button" data-goto-settings>GPU/CPU: —</button>
+      <button class="chip-status" id="tel-browser" type="button" data-goto-settings>Браузер: —</button>
     </div>
   </header>
 
-  <!-- ============================= VIEW 1: NLE STUDIO WORKBENCH ============================= -->
-  <main class="view is-active" id="tab-studio">
-    <div class="workbench">
+  <!-- ============================= TAB 1: CREATE (AURORA BENTO) ============================= -->
+  <main class="screen is-active" id="tab-create">
 
-      <!-- ZONE 1: LEFT INSPECTOR -->
-      <aside class="wb-left">
-        <div class="insp-tabs">
-          <button class="insp-tab is-active" data-insp="build" type="button">Сборка</button>
-          <button class="insp-tab" data-insp="look" type="button">Стиль и Звук</button>
-          <button class="insp-tab" data-insp="ads" type="button">Реклама</button>
+    <!-- Quick Recipe Cards -->
+    <section class="recipes-bar">
+      <button class="recipe-card is-active" data-recipe="moments" type="button">
+        <div class="rc-icon rc-violet">⚡</div>
+        <div class="rc-body">
+          <strong>Вирусные моменты</strong>
+          <span>ИИ находит лучшие хуки и пики</span>
         </div>
+      </button>
+      <button class="recipe-card" data-recipe="parts" type="button">
+        <div class="rc-icon rc-sky">🎞</div>
+        <div class="rc-body">
+          <strong>Сериал по частям</strong>
+          <span>«Часть 1 / 2 / 3» без обрывов фраз</span>
+        </div>
+      </button>
+      <button class="recipe-card" data-recipe="brainrot" type="button">
+        <div class="rc-icon rc-emerald">🎙</div>
+        <div class="rc-body">
+          <strong>Китайская дорама + озвучка</strong>
+          <span>Пересказ, рассказчик и канон-OST</span>
+        </div>
+      </button>
+      <button class="recipe-card" data-recipe="ads" type="button">
+        <div class="rc-icon rc-rose">📢</div>
+        <div class="rc-body">
+          <strong>С рекламной вставкой</strong>
+          <span>Моменты или части + авто-промо</span>
+        </div>
+      </button>
+    </section>
 
-        <div class="insp-scroll">
+    <div class="bento-layout">
 
-          <!-- INSPECTOR 1: BUILD -->
-          <div class="insp-pane is-active" id="insp-build">
-            <div class="src-switch">
-              <button class="sw-btn is-active" data-src-mode="file" type="button">Видеофайл</button>
-              <button class="sw-btn" data-src-mode="youtube" type="button">YouTube</button>
+      <!-- LEFT BUILDER STACK -->
+      <div class="builder-col">
+
+        <!-- Card 1: Source Media -->
+        <section class="glass-card">
+          <div class="card-head">
+            <h2>1. Исходное видео</h2>
+            <div class="seg-mini">
+              <button class="seg-mini-btn is-active" data-src-mode="file" type="button">С диска</button>
+              <button class="seg-mini-btn" data-src-mode="youtube" type="button">YouTube</button>
             </div>
+          </div>
 
-            <div id="src-file-pane">
-              <div class="file-bay" id="dropzone" tabindex="0">
-                <input type="file" id="file-input" accept="video/*,.mkv,.mov,.webm,.avi" hidden>
-                <div class="file-bay-main">
-                  <span class="file-bay-icon">↑</span>
-                  <div>
-                    <div class="file-bay-title" id="drop-title">Выбрать или перетащить видео</div>
-                    <div class="file-bay-sub" id="drop-sub">MP4, MOV, MKV, WebM</div>
-                  </div>
-                </div>
-                <button class="btn-icon-xs" id="clear-file-btn" type="button" hidden>✕</button>
-              </div>
+          <div id="src-file-pane">
+            <div class="hero-drop" id="dropzone" tabindex="0">
+              <input type="file" id="file-input" accept="video/*,.mkv,.mov,.webm,.avi" hidden>
+              <div class="drop-badge">MP4 · MOV · MKV · WEBM</div>
+              <div class="drop-title" id="drop-title">Перетащите видео сюда или нажмите для выбора</div>
+              <div class="drop-sub" id="drop-sub">Локальное видео сразу загрузится в предпросмотр 9:16 справа</div>
+              <button class="btn-soft-sm" id="clear-file-btn" type="button" hidden>Очистить файл</button>
             </div>
+          </div>
 
-            <div id="src-yt-pane" hidden>
-              <label class="lbl" for="yt-url">Ссылка на YouTube</label>
-              <div class="row-gap">
-                <input type="url" id="yt-url" placeholder="https://www.youtube.com/watch?v=...">
-                <button class="btn-ghost" id="yt-paste-btn" type="button">Вставить</button>
-              </div>
-              <div class="hint">1080p с авто-обходом 403/IPv6 и cookies Google-профиля.</div>
+          <div id="src-yt-pane" hidden>
+            <div class="input-capsule">
+              <input type="url" id="yt-url" placeholder="Вставьте ссылку youtube.com/watch?v=... или youtu.be/...">
+              <button class="btn-soft-sm" id="yt-paste-btn" type="button">Вставить</button>
             </div>
+            <div class="card-note">Скачивается в 1080p с авто-обходом 403/IPv6 и cookies Google-профиля.</div>
+          </div>
+        </section>
 
-            <div class="sep"></div>
-
-            <div class="lbl-row">
-              <span class="lbl">Режим нарезки</span>
-              <button class="txt-link" data-preset="brainrot" type="button">Пресет: Китайская дорама</button>
+        <!-- Card 2: Mode & Timing / Narration -->
+        <section class="glass-card">
+          <div class="card-head">
+            <h2>2. Сценарий и подача</h2>
+            <div class="seg-mini" id="mode-switch">
+              <button class="seg-mini-btn is-active" data-mode="moments" type="button">Моменты</button>
+              <button class="seg-mini-btn" data-mode="parts" type="button">По частям</button>
+              <button class="seg-mini-btn" data-mode="brainrot" type="button">Дорама TTS</button>
             </div>
+          </div>
 
-            <div class="mode-list" id="mode-stack">
-              <button class="mode-item is-active" data-mode="moments" type="button">
-                <span class="mode-dot"></span>
-                <div>
-                  <div class="mode-t">Умные моменты</div>
-                  <div class="mode-d">ИИ выбирает лучшие хуки и повороты</div>
-                </div>
-              </button>
-              <button class="mode-item" data-mode="parts" type="button">
-                <span class="mode-dot"></span>
-                <div>
-                  <div class="mode-t">Разбить по частям</div>
-                  <div class="mode-d">Ровные серии «Часть 1 / 2 / 3» по фразам</div>
-                </div>
-              </button>
-              <button class="mode-item" data-mode="brainrot" type="button">
-                <span class="mode-dot"></span>
-                <div>
-                  <div class="mode-t">Китайская дорама + озвучка</div>
-                  <div class="mode-d">Пересказ + чистый рассказчик + музыка</div>
-                </div>
-              </button>
-            </div>
-
-            <!-- Moments params -->
-            <div class="param-block" id="opt-moments">
-              <div class="row-2">
-                <div>
-                  <label class="lbl" for="opt-clips">Количество</label>
+          <!-- Moments -->
+          <div id="opt-moments" class="mode-pane">
+            <div class="row-grid-2">
+              <div>
+                <label class="fld-lbl">Количество клипов</label>
+                <div class="stepper-box">
+                  <button class="step-op" data-step="-1" type="button">−</button>
                   <input type="number" id="opt-clips" min="1" max="20" value="5">
-                </div>
-                <div>
-                  <label class="lbl" for="opt-dur-preset">Длительность</label>
-                  <select id="opt-dur-preset">
-                    <option value="15-35">15–35 сек</option>
-                    <option value="18-60" selected>18–60 сек</option>
-                    <option value="30-75">30–75 сек</option>
-                    <option value="45-120">45–120 сек</option>
-                    <option value="custom">Своя…</option>
-                  </select>
+                  <button class="step-op" data-step="1" type="button">+</button>
                 </div>
               </div>
-              <div class="row-2" id="custom-dur-row" hidden style="margin-top:8px">
-                <div><label class="lbl" for="opt-min-dur">Мин (с)</label><input type="number" id="opt-min-dur" min="5" max="180" value="18"></div>
-                <div><label class="lbl" for="opt-max-dur">Макс (с)</label><input type="number" id="opt-max-dur" min="10" max="240" value="60"></div>
+              <div>
+                <label class="fld-lbl" for="opt-dur-preset">Хронометраж</label>
+                <select id="opt-dur-preset">
+                  <option value="15-35">Короткие (15–35с)</option>
+                  <option value="18-60" selected>Оптимум (18–60с)</option>
+                  <option value="30-75">Средние (30–75с)</option>
+                  <option value="45-120">Длинные (45–120с)</option>
+                  <option value="custom">Точный диапазон…</option>
+                </select>
               </div>
             </div>
-
-            <!-- Parts params -->
-            <div class="param-block" id="opt-parts" hidden>
-              <div class="lbl-row">
-                <span class="lbl">Длина части</span>
-                <strong class="val-chip" id="part-sec-label">45с</strong>
-              </div>
-              <div class="chip-grid" id="part-presets">
-                <button class="chip" data-sec="15" type="button">15с</button>
-                <button class="chip" data-sec="30" type="button">30с</button>
-                <button class="chip is-active" data-sec="45" type="button">45с</button>
-                <button class="chip" data-sec="60" type="button">60с</button>
-                <button class="chip" data-sec="90" type="button">90с</button>
-              </div>
-              <input type="range" id="part-sec-range" min="10" max="180" step="5" value="45" style="margin-top:8px">
-              <div style="margin-top:8px">
-                <label class="lbl" for="parts-max-clips">Макс. частей</label>
-                <input type="number" id="parts-max-clips" min="1" max="30" value="8">
-              </div>
+            <div class="row-grid-2" id="custom-dur-row" hidden style="margin-top:10px">
+              <div><label class="fld-lbl" for="opt-min-dur">Мин (сек)</label><input type="number" id="opt-min-dur" min="5" max="180" value="18"></div>
+              <div><label class="fld-lbl" for="opt-max-dur">Макс (сек)</label><input type="number" id="opt-max-dur" min="10" max="240" value="60"></div>
             </div>
+          </div>
 
-            <!-- Brainrot voice params -->
-            <div class="param-block" id="opt-brainrot" hidden>
-              <div class="lbl-row">
-                <label class="lbl" for="opt-voice">Голос рассказчика</label>
-                <button class="txt-link" id="preview-voice-btn" type="button">▶ Прослушать</button>
-              </div>
-              <select id="opt-voice"></select>
-              <audio id="voice-sample-audio" hidden></audio>
-              <div class="hint" id="voice-note-hint">Плавная подача без искажений. Для 100% клона эталона можно указать ключ ElevenLabs в Настройках.</div>
+          <!-- Parts -->
+          <div id="opt-parts" class="mode-pane" hidden>
+            <div class="head-sub">
+              <span>Длительность каждой части</span>
+              <strong class="accent-num" id="part-sec-label">45 сек</strong>
+            </div>
+            <div class="tap-pills" id="part-presets">
+              <button class="tap-pill" data-sec="15" type="button">15с</button>
+              <button class="tap-pill" data-sec="30" type="button">30с</button>
+              <button class="tap-pill is-active" data-sec="45" type="button">45с</button>
+              <button class="tap-pill" data-sec="60" type="button">60с</button>
+              <button class="tap-pill" data-sec="90" type="button">90с</button>
+            </div>
+            <input type="range" id="part-sec-range" min="10" max="180" step="5" value="45" style="margin-top:10px">
+            <div class="row-grid-2" style="margin-top:10px">
+              <div><label class="fld-lbl" for="parts-max-clips">Макс. частей</label><input type="number" id="parts-max-clips" min="1" max="30" value="8"></div>
+              <div class="card-note" style="align-self:center">Режет строго по концу предложений и добавляет подписи частей.</div>
+            </div>
+          </div>
 
-              <div class="lbl-row" style="margin-top:10px">
-                <label class="lbl" for="opt-orig-vol">Шум оригинала</label>
-                <strong class="val-chip" id="orig-vol-label">8%</strong>
+          <!-- Brainrot / Drama TTS -->
+          <div id="opt-brainrot" class="mode-pane" hidden>
+            <div class="head-sub">
+              <label class="fld-lbl" for="opt-voice">Голос рассказчика</label>
+              <button class="btn-soft-sm" id="preview-voice-btn" type="button">▶ Слушать образец</button>
+            </div>
+            <select id="opt-voice"></select>
+            <audio id="audio-preview" hidden></audio>
+            <div class="card-note" id="voice-note-hint">Плавная подача без ускорения. В Настройках можно привязать ключ ElevenLabs для клона 1-в-1.</div>
+
+            <div class="row-grid-2" style="margin-top:12px;align-items:center">
+              <div>
+                <div class="head-sub"><span>Громкость оригинала</span><strong class="accent-num" id="orig-vol-label">8%</strong></div>
+                <input type="range" id="opt-orig-vol" min="0" max="40" step="1" value="8">
               </div>
-              <input type="range" id="opt-orig-vol" min="0" max="40" step="1" value="8">
-              <label class="check-line" style="margin-top:10px">
+              <label class="toggle-tile">
                 <input type="checkbox" id="opt-brainrot-rewrite" checked>
-                <span>ИИ-пересказ в стиле «китайская дорама»</span>
+                <span>ИИ-пересказ сюжета</span>
               </label>
             </div>
           </div>
+        </section>
 
-          <!-- INSPECTOR 2: LOOK & AUDIO -->
-          <div class="insp-pane" id="insp-look">
-            <label class="lbl">Кадрирование 9:16</label>
-            <div class="chip-grid" id="framing-pills">
-              <button class="chip is-active" data-framing="auto" type="button">Авто</button>
-              <button class="chip" data-framing="blur" type="button">Размытие</button>
-              <button class="chip" data-framing="crop" type="button">Кроп</button>
-              <button class="chip" data-framing="black" type="button">Чёрный</button>
-              <button class="chip" data-framing="original" type="button">Оригинал</button>
-            </div>
-
-            <div class="sep"></div>
-            <div class="lbl-row">
-              <span class="lbl">Субтитры</span>
-              <label class="check-line"><input type="checkbox" id="opt-subtitles" checked><span>Вкл</span></label>
-            </div>
-            <div class="chip-grid" id="style-pills">
-              <button class="chip is-active" data-style="classic" type="button">Классика</button>
-              <button class="chip" data-style="bold" type="button">Жирный</button>
-              <button class="chip" data-style="clean" type="button">Чистый</button>
-              <button class="chip" data-style="neon" type="button">Неон</button>
-              <button class="chip" data-style="drama" type="button">Дорама</button>
-            </div>
-
-            <div class="sep"></div>
-            <label class="lbl">Цветокор и FX</label>
-            <div class="chip-grid" id="effect-pills"></div>
-
-            <div class="sep"></div>
-            <div class="lbl-row">
-              <label class="lbl" for="opt-music">Фоновая музыка</label>
-              <strong class="val-chip" id="music-vol-label">18%</strong>
-            </div>
-            <select id="opt-music"></select>
-            <input type="range" id="opt-music-vol" min="0" max="60" step="1" value="18" style="margin-top:8px">
-
-            <div class="sep"></div>
-            <label class="lbl" for="opt-protection">Анти-дубль (уникализация)</label>
-            <select id="opt-protection">
-              <option value="off">Выключена (чистый кадр)</option>
-              <option value="soft">Мягкая (микро-сдвиг и темп)</option>
-              <option value="strong">Сильная (анти-матч)</option>
-            </select>
+        <!-- Card 3: Visuals (Framing Diagrams, Subtitle Swatches, FX Swatches) -->
+        <section class="glass-card">
+          <div class="card-head">
+            <h2>3. Картинка 9:16 и стиль</h2>
+            <label class="toggle-inline"><input type="checkbox" id="opt-subtitles" checked><span>Субтитры</span></label>
           </div>
 
-          <!-- INSPECTOR 3: ADS -->
-          <div class="insp-pane" id="insp-ads">
-            <label class="lbl" for="opt-integration">Активная реклама в сборке</label>
-            <select id="opt-integration">
-              <option value="">Без интеграции</option>
-            </select>
-
-            <div class="sep"></div>
-            <label class="lbl">Добавить ролик (.mp4) или баннер (.png)</label>
-            <input type="text" id="int-name" placeholder="Название (например: VPN Промо)">
-            <input type="file" id="int-file" accept="video/*,image/png,image/jpeg,image/webp" style="margin-top:8px">
-            <div class="row-2" style="margin-top:8px">
-              <div>
-                <label class="lbl" for="int-mode">Тип</label>
-                <select id="int-mode">
-                  <option value="">Авто</option>
-                  <option value="insert">Видео-вставка</option>
-                  <option value="overlay">Баннер поверх</option>
-                </select>
-              </div>
-              <div>
-                <label class="lbl" for="int-pos">Позиция</label>
-                <select id="int-pos">
-                  <option value="after_hook">После хука</option>
-                  <option value="start">В начале</option>
-                  <option value="end">В конце</option>
-                  <option value="bottom">Баннер снизу</option>
-                  <option value="top">Баннер сверху</option>
-                </select>
-              </div>
-            </div>
-            <div class="row-2" style="margin-top:8px">
-              <div><label class="lbl" for="int-hook-sec">Хук (с)</label><input type="number" id="int-hook-sec" step="0.5" min="0" value="3"></div>
-              <div><label class="lbl" for="int-scale">Масштаб (%)</label><input type="number" id="int-scale" min="20" max="100" value="75"></div>
-            </div>
-            <button class="btn-ghost" id="int-upload-btn" type="button" style="width:100%;margin-top:10px">Сохранить материал</button>
-
-            <div class="sep"></div>
-            <div class="lbl">Сохранённые интеграции</div>
-            <div class="saved-int-list" id="saved-int-list"></div>
-          </div>
-
-        </div>
-
-        <footer class="insp-footer">
-          <div class="insp-summary" id="action-summary">Моменты · Авто 9:16 · Классика</div>
-          <div class="row-gap">
-            <button class="btn-danger" id="cancel-job-btn" type="button" hidden>Стоп</button>
-            <button class="btn-primary" id="run-btn" type="button" style="flex:1">
-              <span id="run-btn-label">Собрать клипы</span>
+          <label class="fld-lbl">Кадрирование</label>
+          <div class="visual-cards-5" id="framing-pills">
+            <button class="v-card is-active" data-framing="auto" type="button">
+              <span class="v-ico v-auto"></span><b>Авто</b>
+            </button>
+            <button class="v-card" data-framing="blur" type="button">
+              <span class="v-ico v-blur"></span><b>Размытие</b>
+            </button>
+            <button class="v-card" data-framing="crop" type="button">
+              <span class="v-ico v-crop"></span><b>Кроп</b>
+            </button>
+            <button class="v-card" data-framing="black" type="button">
+              <span class="v-ico v-black"></span><b>Чёрный</b>
+            </button>
+            <button class="v-card" data-framing="original" type="button">
+              <span class="v-ico v-orig"></span><b>Оригинал</b>
             </button>
           </div>
-        </footer>
-      </aside>
 
-      <!-- ZONE 2: CENTER HERO STAGE -->
-      <section class="wb-stage">
-        <div class="stage-top-hud">
-          <div class="stage-view-switch">
-            <button class="sv-btn is-active" data-stage-view="mockup" type="button">Макет 9:16</button>
-            <button class="sv-btn" data-stage-view="player" type="button">Видеоплеер</button>
+          <label class="fld-lbl" style="margin-top:14px">Шрифт и стиль субтитров</label>
+          <div class="style-swatches" id="style-pills">
+            <button class="st-swatch is-active" data-style="classic" type="button"><i class="sw-sample sw-classic">Текст</i><span>Классика</span></button>
+            <button class="st-swatch" data-style="bold" type="button"><i class="sw-sample sw-bold">Текст</i><span>Жирный</span></button>
+            <button class="st-swatch" data-style="clean" type="button"><i class="sw-sample sw-clean">Текст</i><span>Чистый</span></button>
+            <button class="st-swatch" data-style="neon" type="button"><i class="sw-sample sw-neon">Текст</i><span>Неон</span></button>
+            <button class="st-swatch" data-style="drama" type="button"><i class="sw-sample sw-drama">Текст</i><span>Дорама</span></button>
           </div>
-          <div class="stage-telemetry" id="stage-telemetry">1080×1920 · 30 fps</div>
-        </div>
 
-        <div class="stage-viewport">
-          <!-- LIVE COMPOSITOR MOCKUP -->
-          <div class="stage-phone" id="preview-phone" data-framing="auto" data-effect="none" data-style="classic">
-            <div class="sp-blur"></div>
-            <div class="sp-video">
-              <div class="sp-grid"></div>
-              <div class="sp-top-bar">
-                <span class="sp-chip" id="preview-mode-badge">МОМЕНТ #1</span>
-                <span class="sp-chip sp-ad" id="preview-ad-pill" hidden>РЕКЛАМА</span>
+          <label class="fld-lbl" style="margin-top:14px">Цветовой фильтр (FX)</label>
+          <div class="tap-pills" id="effect-pills"></div>
+        </section>
+
+        <!-- Card 4: Audio, Uniqueness, Ad Integration -->
+        <section class="glass-card">
+          <div class="card-head">
+            <h2>4. Звук, уникализация и реклама</h2>
+          </div>
+
+          <div class="row-grid-2">
+            <div>
+              <div class="head-sub">
+                <label class="fld-lbl" for="opt-music">Музыка</label>
+                <button class="txt-act" id="preview-music-btn" type="button">▶ Слушать трек</button>
+              </div>
+              <select id="opt-music"></select>
+              <div class="head-sub" style="margin-top:8px">
+                <span class="muted-xs">Громкость фона</span>
+                <strong class="accent-num" id="music-vol-label">18%</strong>
+              </div>
+              <input type="range" id="opt-music-vol" min="0" max="60" step="1" value="18">
+            </div>
+
+            <div>
+              <label class="fld-lbl" for="opt-protection">Анти-дубль</label>
+              <select id="opt-protection">
+                <option value="off">Выкл (оригинал)</option>
+                <option value="soft">Мягкая уникализация</option>
+                <option value="strong">Сильная защита</option>
+              </select>
+
+              <div class="head-sub" style="margin-top:8px">
+                <label class="fld-lbl" for="opt-integration">Реклама</label>
+                <button class="txt-act" id="open-int-modal-btn" type="button">+ добавить</button>
+              </div>
+              <select id="opt-integration"><option value="">Без интеграции</option></select>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT STICKY LIVE STAGE + LAUNCH -->
+      <aside class="stage-col">
+        <div class="glass-card stage-sticky">
+          <div class="card-head">
+            <h2>Живой предпросмотр 9:16</h2>
+            <span class="aspect-pill">1080 × 1920</span>
+          </div>
+
+          <div class="phone-stage-wrap">
+            <div class="phone-bezel" id="preview-phone" data-framing="auto" data-effect="none" data-style="classic">
+              <div class="pb-bg-aura"></div>
+              <!-- Muted live local video inside preview if loaded -->
+              <video class="pb-bg-video" id="preview-bg-video" muted loop playsinline hidden></video>
+              <div class="pb-content-frame">
+                <video class="pb-fg-video" id="preview-fg-video" muted loop playsinline hidden></video>
+                <div class="pb-demo-art" id="preview-demo-art">
+                  <div class="art-orb"></div>
+                  <div class="art-scan"></div>
+                </div>
+                <div class="pb-badges">
+                  <span class="pb-tag" id="preview-mode-badge">МОМЕНТ #1</span>
+                  <span class="pb-tag pb-tag-ad" id="preview-ad-pill" hidden>РЕКЛАМА</span>
+                </div>
+              </div>
+              <div class="pb-sub" id="preview-sub-box"><span id="preview-sub-text">ОКАЗАЛОСЬ ЧТО ЭТО БЫЛА ЛОВУШКА</span></div>
+              <div class="pb-ad-banner" id="preview-ad-bottom" hidden>PROMO · ИНТЕГРАЦИЯ</div>
+              <div class="pb-hud">
+                <span id="preview-fx-label">FX: Без обработки</span>
+                <span id="preview-music-label">♪ без музыки</span>
               </div>
             </div>
-            <div class="sp-subs" id="preview-sub-box">
-              <span id="preview-sub-text">ОКАЗАЛОСЬ ЧТО ЭТО БЫЛА ЛОВУШКА</span>
+          </div>
+
+          <div class="launch-summary" id="action-summary">Моменты · Авто 9:16 · Классика</div>
+
+          <div class="launch-buttons">
+            <button class="btn-danger" id="cancel-job-btn" type="button" hidden>Стоп</button>
+            <button class="btn-aurora" id="run-btn" type="button">
+              <span id="run-btn-label">Создать клипы</span>
+            </button>
+          </div>
+
+          <!-- Live Job Progress Capsule -->
+          <div class="progress-capsule" id="create-progress-box">
+            <div class="pc-top">
+              <strong id="job-step-name">Готов к сборке</strong>
+              <span class="mono" id="job-pct-badge">0%</span>
             </div>
-            <div class="sp-banner" id="preview-ad-bottom" hidden>PROMO · БАННЕР</div>
-            <div class="sp-footer">
-              <span id="preview-fx-label">FX: нет</span>
-              <span id="preview-music-label">♪ без музыки</span>
+            <div class="pc-track"><div class="pc-fill" id="job-progress-fill" style="width:0%"></div></div>
+            <div class="pc-foot">
+              <span id="job-step-msg">Выберите файл или вставьте ссылку YouTube</span>
+              <span class="mono" id="job-elapsed">00:00</span>
             </div>
-          </div>
-
-          <!-- REAL VIDEO PLAYER (SHOWN WHEN CLIP SELECTED) -->
-          <div class="stage-player-wrap" id="stage-player-wrap" hidden>
-            <video id="stage-video" controls playsinline></video>
-          </div>
-        </div>
-
-        <!-- INLINE CLIP EDITOR STRIP (SHOWN WHEN A CLIP IS SELECTED) -->
-        <div class="clip-editor-strip" id="clip-editor-strip" hidden>
-          <input type="text" id="ce-title" placeholder="Заголовок клипа">
-          <input type="text" id="ce-hook" placeholder="Хук">
-          <input type="text" id="ce-tags" placeholder="#shorts #дорама">
-          <input type="number" id="ce-start" step="0.1" min="0" style="width:76px" title="Старт (сек)">
-          <input type="number" id="ce-end" step="0.1" min="1" style="width:76px" title="Конец (сек)">
-          <button class="btn-ghost" id="ce-recut-btn" type="button">Перерезать</button>
-          <button class="btn-primary" id="ce-save-btn" type="button">Сохранить</button>
-        </div>
-
-        <!-- BOTTOM TRANSPORT / PROGRESS BAR -->
-        <div class="stage-transport">
-          <div class="tr-main">
-            <div class="tr-status">
-              <span class="tr-pct mono" id="job-pct-badge">0%</span>
-              <strong id="job-step-name">Готов к запуску</strong>
-              <span class="muted" id="job-step-msg">Выберите файл или вставьте ссылку на YouTube</span>
+            <div class="pc-actions">
+              <button class="btn-soft-sm" id="toggle-log-btn" type="button">Показать лог</button>
+              <button class="btn-soft-sm" id="open-folder-btn" type="button" hidden>Открыть папку</button>
+              <button class="btn-soft-sm" id="goto-clips-btn" type="button" hidden>К клипам →</button>
             </div>
-            <div class="tr-right">
-              <span class="mono muted" id="job-elapsed">00:00</span>
-              <button class="btn-ghost" id="open-folder-btn" type="button" hidden>Открыть папку</button>
-            </div>
+            <pre class="mini-console" id="job-terminal" hidden>Ожидание запуска…</pre>
           </div>
-          <div class="tr-bar"><div class="tr-fill" id="job-progress-fill" style="width:0%"></div></div>
-          <div class="tr-steps" id="pipeline-stepper">
-            <span data-stage="source">1. Источник</span>
-            <span data-stage="stt">2. Whisper</span>
-            <span data-stage="llm">3. Сценарий / TTS</span>
-            <span data-stage="render">4. Рендер 9:16</span>
-            <span data-stage="done">5. Готово</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- ZONE 3: RIGHT OUTPUT BIN & LOGS -->
-      <aside class="wb-right">
-        <div class="insp-tabs">
-          <button class="bin-tab is-active" data-bin="clips" type="button">Клипы <span class="tb-badge" id="deck-count">0</span></button>
-          <button class="bin-tab" data-bin="logs" type="button">Журнал процесса</button>
-        </div>
-
-        <!-- BIN 1: CLIPS -->
-        <div class="bin-pane is-active" id="bin-clips">
-          <div class="bin-toolbar">
-            <button class="btn-ghost-xs" id="deck-select-all" type="button">Все</button>
-            <button class="btn-ghost-xs" id="deck-select-none" type="button">Снять</button>
-            <select id="deck-int-select" class="compact-sel"><option value="">Реклама…</option></select>
-            <button class="btn-ghost-xs" id="deck-apply-int-btn" type="button">Вшить</button>
-            <button class="btn-indigo-xs" id="deck-to-upload-btn" type="button">Загрузить (<span id="deck-selected-count">0</span>)</button>
-          </div>
-          <div class="muted-xs bin-src" id="deck-source">Готовые ролики появятся здесь</div>
-          <div class="bin-list" id="clips-grid">
-            <div class="empty-box">Запустите нарезку слева — клипы сразу загрузятся сюда.</div>
-          </div>
-        </div>
-
-        <!-- BIN 2: LOGS -->
-        <div class="bin-pane" id="bin-logs">
-          <div class="bin-toolbar">
-            <span class="muted-xs">Live stdout / ffmpeg / TTS</span>
-            <button class="btn-ghost-xs" id="copy-log-btn" type="button">Копировать</button>
-          </div>
-          <pre class="bin-terminal" id="job-terminal">Ожидание запуска задачи…</pre>
         </div>
       </aside>
 
     </div>
   </main>
 
-  <!-- ============================= VIEW 2: UPLOAD ============================= -->
-  <main class="view" id="tab-upload">
-    <div class="page-wrap two-col">
-      <section class="surface">
-        <div class="surf-head"><h2>Пакетная публикация</h2><span class="val-chip">Shorts / Reels / TikTok / VK</span></div>
+  <!-- ============================= TAB 2: CLIPS & EDITOR ============================= -->
+  <main class="screen" id="tab-clips">
+    <div class="clips-toolbar glass-card">
+      <div class="row-gap">
+        <select id="clips-job-select" style="width:300px"></select>
+        <input type="search" id="hist-search" placeholder="Фильтр задач…" style="width:180px">
+        <button class="btn-soft-sm" id="clips-refresh-btn" type="button">Обновить</button>
+      </div>
+      <div class="row-gap">
+        <button class="btn-soft-sm" id="deck-select-all" type="button">Выбрать все</button>
+        <button class="btn-soft-sm" id="deck-select-none" type="button">Снять</button>
+        <select id="deck-int-select" style="width:180px"><option value="">Вшить рекламу…</option></select>
+        <button class="btn-soft-sm" id="deck-apply-int-btn" type="button">Применить</button>
+        <button class="btn-aurora-sm" id="deck-to-upload-btn" type="button">В публикацию (<span id="deck-selected-count">0</span>)</button>
+      </div>
+    </div>
 
-        <label class="lbl" for="up-job-select">Нарезка для загрузки</label>
+    <div class="clips-studio-grid">
+      <div class="clips-cards-grid" id="clips-grid">
+        <div class="empty-glass">Пока нет готовых клипов. Создайте нарезку на вкладке «Создать».</div>
+      </div>
+
+      <aside class="glass-card inspector-sticky">
+        <div class="card-head">
+          <h2 id="insp-clip-heading">Просмотр и правка клипа</h2>
+          <span class="aspect-pill" id="insp-clip-dur">—</span>
+        </div>
+        <div class="insp-video-box">
+          <video id="stage-video" controls playsinline></video>
+        </div>
+        <div class="insp-fields" id="clip-editor-strip">
+          <label class="fld-lbl" for="ce-title">Заголовок</label>
+          <input type="text" id="ce-title" placeholder="Заголовок клипа">
+          <label class="fld-lbl" for="ce-hook" style="margin-top:8px">Хук</label>
+          <input type="text" id="ce-hook" placeholder="Первая цепляющая фраза">
+          <label class="fld-lbl" for="ce-tags" style="margin-top:8px">Хештеги</label>
+          <input type="text" id="ce-tags" placeholder="#shorts #дорама">
+          <div class="row-grid-2" style="margin-top:8px">
+            <div><label class="fld-lbl" for="ce-start">Старт (сек)</label><input type="number" id="ce-start" step="0.1" min="0"></div>
+            <div><label class="fld-lbl" for="ce-end">Конец (сек)</label><input type="number" id="ce-end" step="0.1" min="1"></div>
+          </div>
+          <div class="row-grid-2" style="margin-top:12px">
+            <button class="btn-soft-sm" id="ce-recut-btn" type="button">Перерезать</button>
+            <button class="btn-aurora-sm" id="ce-save-btn" type="button">Сохранить текст</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- ============================= TAB 3: PUBLISH ============================= -->
+  <main class="screen" id="tab-publish">
+    <div class="two-pane-glass">
+      <section class="glass-card">
+        <div class="card-head"><h2>Пакетная авто-публикация</h2><span class="aspect-pill">Shorts · Reels · TikTok · VK</span></div>
+        <label class="fld-lbl" for="up-job-select">Нарезка</label>
         <select id="up-job-select"></select>
-
-        <div class="lbl-row" style="margin-top:14px">
-          <span class="lbl">Клипы (<span id="up-sel-count">0</span>)</span>
-          <button class="txt-link" id="up-toggle-all" type="button">Переключить все</button>
+        <div class="head-sub" style="margin-top:12px">
+          <span>Клипы (<span id="up-sel-count">0</span>)</span>
+          <button class="txt-act" id="up-toggle-all" type="button">Переключить все</button>
         </div>
-        <div class="check-box" id="up-clip-list"><div class="empty-box">Нет клипов</div></div>
+        <div class="check-list-glass" id="up-clip-list"><div class="empty-glass">Нет клипов</div></div>
 
-        <label class="lbl" style="margin-top:14px">Площадки</label>
-        <div class="row-2" id="up-platforms">
-          <label class="check-tile"><input type="checkbox" value="youtube" checked><span>YouTube Shorts</span></label>
-          <label class="check-tile"><input type="checkbox" value="tiktok"><span>TikTok</span></label>
-          <label class="check-tile"><input type="checkbox" value="instagram"><span>Instagram Reels</span></label>
-          <label class="check-tile"><input type="checkbox" value="vk"><span>VK Клипы</span></label>
+        <label class="fld-lbl" style="margin-top:12px">Платформы</label>
+        <div class="row-grid-2" id="up-platforms">
+          <label class="toggle-tile"><input type="checkbox" value="youtube" checked><span>YouTube Shorts</span></label>
+          <label class="toggle-tile"><input type="checkbox" value="tiktok"><span>TikTok</span></label>
+          <label class="toggle-tile"><input type="checkbox" value="instagram"><span>Instagram Reels</span></label>
+          <label class="toggle-tile"><input type="checkbox" value="vk"><span>VK Клипы</span></label>
         </div>
 
-        <div class="row-2" style="margin-top:14px">
+        <div class="row-grid-2" style="margin-top:12px">
           <div>
-            <label class="lbl" for="up-visibility">Доступ</label>
+            <label class="fld-lbl" for="up-visibility">Видимость</label>
             <select id="up-visibility">
               <option value="public">Открытый</option>
               <option value="unlisted">По ссылке</option>
-              <option value="private" selected>Приватный / черновик</option>
+              <option value="private" selected>Приватный</option>
             </select>
           </div>
           <div>
-            <label class="lbl" for="up-engine">Браузер</label>
+            <label class="fld-lbl" for="up-engine">Браузер</label>
             <select id="up-engine">
               <option value="plain">Встроенный Playwright</option>
               <option value="dolphin">Dolphin Anty</option>
@@ -431,183 +433,160 @@
             </select>
           </div>
         </div>
-
         <div id="up-profile-row" style="margin-top:10px" hidden>
-          <div class="lbl-row">
-            <label class="lbl" for="up-profile-id">Профиль антидетекта</label>
-            <button class="txt-link" id="up-refresh-profiles" type="button">Обновить</button>
-          </div>
+          <div class="head-sub"><label class="fld-lbl" for="up-profile-id">Профиль</label><button class="txt-act" id="up-refresh-profiles" type="button">Обновить</button></div>
           <select id="up-profile-id"></select>
         </div>
       </section>
 
-      <section class="surface">
-        <div class="surf-head"><h2>Консоль публикации</h2><span class="val-chip" id="up-status-badge">Готово</span></div>
-        <div class="info-banner">Тестовый прогон проверяет файлы и вход в студию без нажатия кнопки публикации.</div>
-        <div class="row-gap" style="margin:12px 0">
-          <button class="btn-ghost" id="up-dry-btn" type="button">Тестовый прогон</button>
-          <button class="btn-primary" id="up-publish-btn" type="button">Опубликовать выбранные</button>
+      <section class="glass-card">
+        <div class="card-head"><h2>Запуск и отчёт</h2><span class="aspect-pill" id="up-status-badge">Готово</span></div>
+        <div class="info-glass">«Тестовый прогон» проверяет клипы и открытие формы загрузки без реальной публикации.</div>
+        <div class="row-grid-2" style="margin:12px 0">
+          <button class="btn-soft-sm" id="up-dry-btn" type="button">Тестовый прогон</button>
+          <button class="btn-aurora-sm" id="up-publish-btn" type="button">Опубликовать выбранные</button>
         </div>
-        <div class="lbl-row"><span class="lbl">Отчёт</span><span class="mono" id="up-progress-label">0%</span></div>
-        <pre class="bin-terminal tall" id="up-terminal">Выберите клипы и площадки слева.</pre>
+        <div class="head-sub"><span>Лог публикации</span><span class="mono" id="up-progress-label">0%</span></div>
+        <pre class="mini-console tall" id="up-terminal" style="display:block">Выберите клипы и площадки слева.</pre>
       </section>
     </div>
   </main>
 
-  <!-- ============================= VIEW 3: HISTORY ============================= -->
-  <main class="view" id="tab-history">
-    <div class="page-wrap">
-      <section class="surface">
-        <div class="surf-head">
-          <h2>История задач</h2>
-          <div class="row-gap">
-            <input type="search" id="hist-search" placeholder="Поиск по имени или URL…" style="width:220px">
-            <select id="hist-filter" style="width:170px">
-              <option value="all">Все типы</option>
-              <option value="clipping">Нарезки</option>
-              <option value="login">Входы в аккаунты</option>
-              <option value="upload">Публикации</option>
-            </select>
-            <button class="btn-ghost" id="hist-refresh-btn" type="button">Обновить</button>
-          </div>
+  <!-- ============================= TAB 4: SETTINGS ============================= -->
+  <main class="screen" id="tab-settings">
+    <section class="glass-card hero-accounts">
+      <div class="card-head">
+        <div>
+          <h2>Аккаунты ChatGPT и Google Gemini</h2>
+          <div class="card-note">Подключайте подписку вместо API-ключей. Профиль Google также помогает скачивать YouTube без капчи.</div>
         </div>
-        <div class="hist-list" id="history-list"></div>
-      </section>
-    </div>
-  </main>
-
-  <!-- ============================= VIEW 4: PREFERENCES ============================= -->
-  <main class="view" id="tab-settings">
-    <div class="prefs-layout">
-      <nav class="prefs-nav">
-        <a href="#sec-accounts" class="prefs-link is-active">Аккаунты подписки</a>
-        <a href="#sec-llm" class="prefs-link">ИИ-модели и ключи</a>
-        <a href="#sec-tts" class="prefs-link">Озвучка (TTS / Клон)</a>
-        <a href="#sec-models" class="prefs-link">Whisper (Речь)</a>
-        <a href="#sec-system" class="prefs-link">Папки, энкодер и сеть</a>
-      </nav>
-
-      <div class="prefs-body">
-        <!-- ACCOUNTS -->
-        <section class="surface" id="sec-accounts">
-          <div class="surf-head">
-            <div>
-              <h2>Аккаунты ChatGPT и Google Gemini</h2>
-              <div class="muted-xs">Работает по вашей подписке без API-ключей. Google-профиль также снимает капчу YouTube.</div>
-            </div>
-            <div class="row-gap">
-              <button class="btn-primary" id="login-chatgpt-oauth" type="button">ChatGPT (OAuth)</button>
-              <button class="btn-ghost" id="login-chatgpt-browser" type="button">ChatGPT (браузер)</button>
-              <button class="btn-ghost" id="login-google-browser" type="button">Google Gemini (браузер)</button>
-            </div>
-          </div>
-
-          <div class="auth-box" id="auth-console" hidden>
-            <div class="surf-head">
-              <div><strong id="auth-console-title">Авторизация…</strong> <span class="muted-xs" id="auth-console-msg"></span></div>
-              <div class="row-gap">
-                <a class="btn-ghost" id="auth-url-open" href="#" target="_blank" rel="noopener" hidden>Открыть ссылку</a>
-                <button class="btn-ghost" id="auth-url-copy" type="button" hidden>Копировать URL</button>
-                <button class="btn-danger" id="auth-cancel-btn" type="button" hidden>Отмена</button>
-              </div>
-            </div>
-            <div class="tr-bar" style="margin:8px 0"><div class="tr-fill" id="auth-progress-fill" style="width:10%"></div></div>
-            <pre class="bin-terminal compact" id="auth-terminal"></pre>
-          </div>
-
-          <div class="acc-grid" id="accounts-grid"></div>
-        </section>
-
-        <!-- LLM & TTS -->
-        <div class="two-col">
-          <section class="surface" id="sec-llm">
-            <div class="surf-head"><h2>ИИ-провайдер</h2><span class="val-chip">Сценарий</span></div>
-            <label class="lbl" for="set-provider">Провайдер</label>
-            <select id="set-provider"></select>
-            <label class="lbl" for="set-model" style="margin-top:10px">Модель</label>
-            <select id="set-model"></select>
-            <div id="set-key-wrap" style="margin-top:10px">
-              <label class="lbl" for="set-api-key">API-ключ</label>
-              <div class="row-gap">
-                <input type="password" id="set-api-key" placeholder="sk-…">
-                <button class="btn-ghost" id="test-provider-btn" type="button">Проверить</button>
-              </div>
-            </div>
-            <div id="set-baseurl-wrap" style="margin-top:10px" hidden>
-              <label class="lbl" for="set-base-url">Base URL</label>
-              <input type="url" id="set-base-url" placeholder="http://127.0.0.1:11434/v1">
-            </div>
-            <label class="check-line" style="margin-top:12px">
-              <input type="checkbox" id="set-fallback" checked>
-              <span>Авто-переключение на резервного провайдера</span>
-            </label>
-            <div class="test-msg" id="provider-test-status"></div>
-          </section>
-
-          <section class="surface" id="sec-tts">
-            <div class="surf-head"><h2>Озвучка китайских историй</h2><span class="val-chip">TTS / Клон</span></div>
-            <div class="info-banner" style="margin-bottom:10px">
-              Встроены 2 эталонных мужских голоса («Канон 1» и «Канон 2»). С ключом ElevenLabs они автоматически клонируются 1-в-1; без ключа используется чистый нейроголос.
-            </div>
-            <label class="lbl" for="set-eleven-key">ElevenLabs API-ключ (опционально)</label>
-            <input type="password" id="set-eleven-key" placeholder="xi-api-key для точного клонирования эталонов">
-            <div class="row-gap" style="margin-top:10px">
-              <button class="btn-ghost" id="play-canon-1" type="button">▶ Эталон 1</button>
-              <button class="btn-ghost" id="play-canon-2" type="button">▶ Эталон 2</button>
-            </div>
-          </section>
-        </div>
-
-        <!-- WHISPER + SYSTEM -->
-        <div class="two-col">
-          <section class="surface" id="sec-models">
-            <div class="surf-head"><h2>Распознавание речи (Whisper)</h2><span class="val-chip">ModelScope</span></div>
-            <div class="models-stack" id="models-list"></div>
-          </section>
-
-          <section class="surface" id="sec-system">
-            <div class="surf-head"><h2>Рендер, папки и сеть</h2><span class="val-chip">Система</span></div>
-            <label class="lbl" for="set-outdir">Папка готовых клипов</label>
-            <input type="text" id="set-outdir" placeholder="по умолчанию: app/data/jobs">
-            <div class="row-2" style="margin-top:10px">
-              <div>
-                <label class="lbl" for="set-lang">Язык видео</label>
-                <select id="set-lang">
-                  <option value="auto">Авто</option>
-                  <option value="ru">Русский</option>
-                  <option value="en">Английский</option>
-                  <option value="zh">Китайский</option>
-                </select>
-              </div>
-              <div>
-                <label class="lbl" for="set-encoder">Энкодер видео</label>
-                <select id="set-encoder">
-                  <option value="auto">Авто (GPU / CPU)</option>
-                  <option value="h264_nvenc">NVIDIA NVENC</option>
-                  <option value="h264_qsv">Intel QSV</option>
-                  <option value="h264_amf">AMD AMF</option>
-                  <option value="libx264">CPU (libx264)</option>
-                </select>
-              </div>
-            </div>
-            <label class="lbl" for="set-proxy" style="margin-top:10px">Прокси (YouTube / ИИ / OAuth / браузер)</label>
-            <input type="text" id="set-proxy" placeholder="http://127.0.0.1:10808">
-            <label class="lbl" for="set-yt-cookies" style="margin-top:10px">Cookies для YouTube</label>
-            <select id="set-yt-cookies">
-              <option value="auto">Авто (брать из Google-профиля)</option>
-              <option value="account">Всегда из аккаунта</option>
-              <option value="none">Выключено</option>
-            </select>
-            <button class="btn-primary" id="save-settings-btn" type="button" style="width:100%;margin-top:14px">Сохранить все настройки</button>
-          </section>
+        <div class="row-gap">
+          <button class="btn-aurora-sm" id="login-chatgpt-oauth" type="button">Войти в ChatGPT (OAuth)</button>
+          <button class="btn-soft-sm" id="login-chatgpt-browser" type="button">ChatGPT (браузер)</button>
+          <button class="btn-soft-sm" id="login-google-browser" type="button">Google Gemini (браузер)</button>
         </div>
       </div>
+
+      <div class="auth-live-box" id="auth-console" hidden>
+        <div class="card-head">
+          <div><strong id="auth-console-title">Авторизация…</strong> <span class="muted-xs" id="auth-console-msg"></span></div>
+          <div class="row-gap">
+            <a class="btn-soft-sm" id="auth-url-open" href="#" target="_blank" rel="noopener" hidden>Открыть ссылку</a>
+            <button class="btn-soft-sm" id="auth-url-copy" type="button" hidden>Копировать URL</button>
+            <button class="btn-danger" id="auth-cancel-btn" type="button" hidden>Отмена</button>
+          </div>
+        </div>
+        <div class="pc-track"><div class="pc-fill" id="auth-progress-fill" style="width:10%"></div></div>
+        <pre class="mini-console" id="auth-terminal" style="display:block;margin-top:8px"></pre>
+      </div>
+
+      <div class="acc-cards-grid" id="accounts-grid"></div>
+    </section>
+
+    <div class="two-pane-glass" style="margin-top:16px">
+      <section class="glass-card">
+        <div class="card-head"><h2>ИИ-модели и API-ключи</h2><span class="aspect-pill">Сценарий</span></div>
+        <label class="fld-lbl" for="set-provider">Провайдер</label>
+        <select id="set-provider"></select>
+        <label class="fld-lbl" for="set-model" style="margin-top:10px">Модель</label>
+        <select id="set-model"></select>
+        <div id="set-key-wrap" style="margin-top:10px">
+          <label class="fld-lbl" for="set-api-key">API-ключ</label>
+          <div class="input-capsule">
+            <input type="password" id="set-api-key" placeholder="sk-…">
+            <button class="btn-soft-sm" id="test-provider-btn" type="button">Проверить</button>
+          </div>
+        </div>
+        <div id="set-baseurl-wrap" style="margin-top:10px" hidden>
+          <label class="fld-lbl" for="set-base-url">Base URL</label>
+          <input type="url" id="set-base-url" placeholder="http://127.0.0.1:11434/v1">
+        </div>
+        <label class="toggle-tile" style="margin-top:12px">
+          <input type="checkbox" id="set-fallback" checked>
+          <span>Авто-переключение провайдера при ошибке</span>
+        </label>
+        <div class="test-msg" id="provider-test-status"></div>
+
+        <div class="sep-line"></div>
+        <div class="card-head"><h2>Озвучка и клон эталонов</h2><span class="aspect-pill">TTS</span></div>
+        <label class="fld-lbl" for="set-eleven-key">ElevenLabs API-ключ (опционально для 1-в-1 клона)</label>
+        <input type="password" id="set-eleven-key" placeholder="xi-api-key…">
+        <div class="row-grid-2" style="margin-top:10px">
+          <button class="btn-soft-sm" id="play-canon-1" type="button">▶ Эталон голоса 1</button>
+          <button class="btn-soft-sm" id="play-canon-2" type="button">▶ Эталон голоса 2</button>
+        </div>
+      </section>
+
+      <section class="glass-card">
+        <div class="card-head"><h2>Whisper, рендер и сеть</h2><span class="aspect-pill">Система</span></div>
+        <div class="models-grid" id="models-list"></div>
+
+        <div class="sep-line"></div>
+        <label class="fld-lbl" for="set-outdir">Папка готовых клипов</label>
+        <input type="text" id="set-outdir" placeholder="по умолчанию: app/data/jobs">
+        <div class="row-grid-2" style="margin-top:10px">
+          <div>
+            <label class="fld-lbl" for="set-lang">Язык исходника</label>
+            <select id="set-lang">
+              <option value="auto">Авто</option>
+              <option value="ru">Русский</option>
+              <option value="en">Английский</option>
+              <option value="zh">Китайский</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld-lbl" for="set-encoder">Энкодер видео</label>
+            <select id="set-encoder">
+              <option value="auto">Авто (GPU / CPU)</option>
+              <option value="h264_nvenc">NVIDIA NVENC</option>
+              <option value="h264_qsv">Intel QSV</option>
+              <option value="h264_amf">AMD AMF</option>
+              <option value="libx264">CPU (libx264)</option>
+            </select>
+          </div>
+        </div>
+        <label class="fld-lbl" for="set-proxy" style="margin-top:10px">Прокси (YouTube / ИИ / браузер)</label>
+        <input type="text" id="set-proxy" placeholder="http://127.0.0.1:10808">
+        <label class="fld-lbl" for="set-yt-cookies" style="margin-top:10px">Cookies для YouTube</label>
+        <select id="set-yt-cookies">
+          <option value="auto">Авто (брать из Google-профиля)</option>
+          <option value="account">Всегда из аккаунта</option>
+          <option value="none">Выключено</option>
+        </select>
+        <button class="btn-aurora" id="save-settings-btn" type="button" style="margin-top:14px">Сохранить настройки</button>
+      </section>
     </div>
   </main>
 
 </div>
 
+<!-- INTEGRATION MODAL -->
+<div class="modal-mask" id="int-modal" hidden>
+  <div class="glass-card modal-card">
+    <div class="card-head">
+      <h2>Рекламная интеграция</h2>
+      <button class="btn-soft-sm" id="close-int-modal" type="button">✕ Закрыть</button>
+    </div>
+    <label class="fld-lbl" for="int-name">Название</label>
+    <input type="text" id="int-name" placeholder="VPN Промо">
+    <label class="fld-lbl" for="int-file" style="margin-top:10px">Видео (.mp4) или баннер (.png)</label>
+    <input type="file" id="int-file" accept="video/*,image/png,image/jpeg,image/webp">
+    <div class="row-grid-2" style="margin-top:10px">
+      <div><label class="fld-lbl" for="int-mode">Тип</label><select id="int-mode"><option value="">Авто</option><option value="insert">Видео-вставка</option><option value="overlay">Баннер</option></select></div>
+      <div><label class="fld-lbl" for="int-pos">Позиция</label><select id="int-pos"><option value="after_hook">После хука</option><option value="start">В начале</option><option value="end">В конце</option><option value="bottom">Снизу</option><option value="top">Сверху</option></select></div>
+    </div>
+    <div class="row-grid-2" style="margin-top:10px">
+      <div><label class="fld-lbl" for="int-hook-sec">Сдвиг (с)</label><input type="number" id="int-hook-sec" step="0.5" min="0" value="3"></div>
+      <div><label class="fld-lbl" for="int-scale">Масштаб (%)</label><input type="number" id="int-scale" min="20" max="100" value="75"></div>
+    </div>
+    <button class="btn-aurora-sm" id="int-upload-btn" type="button" style="width:100%;margin-top:12px">Загрузить и сохранить</button>
+    <div class="sep-line"></div>
+    <label class="fld-lbl">Сохранённые материалы</label>
+    <div class="saved-int-list" id="saved-int-list"></div>
+  </div>
+</div>
+
 <div class="toast-stack" id="toast-stack"></div>
-<script src="/assets/app.js?v=2"></script>
+<script src="/assets/app.js?v=3"></script>
 </body>
 </html>

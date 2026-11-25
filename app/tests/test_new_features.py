@@ -230,9 +230,9 @@ def test_web_ui_serves_redesigned_studio_html_and_assets():
     client = TestClient(fastapi_app)
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "Cutter Workbench" in resp.text
+    assert "Cutter Studio" in resp.text
     assert 'id="preview-phone"' in resp.text
-    assert 'id="stage-player-wrap"' in resp.text
+    assert 'id="tab-clips"' in resp.text
     assert 'id="auth-console"' in resp.text
     assert "no-store" in (resp.headers.get("cache-control") or "")
     assert client.get("/assets/app.css").status_code == 200
@@ -240,6 +240,9 @@ def test_web_ui_serves_redesigned_studio_html_and_assets():
     sample_resp = client.get("/api/voices/canon_bright/sample")
     assert sample_resp.status_code == 200
     assert len(sample_resp.content) > 10000
+    music_resp = client.get("/api/music/drama-guzheng")
+    assert music_resp.status_code == 200
+    assert len(music_resp.content) > 10000
 
 
 def test_tts_merge_dub_segments_combines_short_phrases():
