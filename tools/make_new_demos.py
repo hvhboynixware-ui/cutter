@@ -79,13 +79,12 @@ def render_brainrot_demo(work: Path) -> Path:
         _make_base_clip(src, duration=12.0, text_label="AI DRAMA DUB")
 
     dub_lines = [
-        tts.DubSegment(0.0, 3.8, "Никто не верил, что обычный курьер окажется хозяином всего города!"),
-        tts.DubSegment(4.0, 8.0, "Она перевернула его тележку и рассмеялась прямо в лицо."),
-        tts.DubSegment(8.2, 11.8, "Но через секунду приехали три черных кортежа."),
+        tts.DubSegment(0.0, 5.2, "Оказалось, незадолго до этого парень проверил прогноз и увидел, что придет сильнейший град."),
+        tts.DubSegment(5.4, 11.8, "Он сразу предупредил всю деревню, чтобы спасти урожай, над которым все трудились целый год."),
     ]
     dub = tts.build_dub_track(
         dub_lines, clip_start=0.0, clip_end=12.0,
-        workdir=work / "tts", voice_id="dmitry_drama", log=print,
+        workdir=work / "tts", voice_id="canon_bright", log=print,
     )
     words = [P.Word(s, e, t) for s, e, t in dub.words]
     cues = P.build_cues(words, 0.0, 12.0)

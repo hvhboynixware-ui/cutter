@@ -19,7 +19,6 @@
     providers: [],
     accountProviders: [],
     accounts: [],
-    models: { installed: {}, sizes: {} },
     integrations: [],
     jobs: [],
     activeJobId: '',
@@ -28,11 +27,10 @@
     currentJobClips: [],
     currentClipsJobId: '',
     selectedClipIds: new Set(),
+    playingClipId: '',
     editingClip: null,
     pollTimer: null,
   };
-
-  // ------------------------------------------------------------------ utils
 
   function esc(val) {
     return String(val ?? '')
@@ -57,17 +55,13 @@
     const text = await res.text();
     let data = {};
     try { data = text ? JSON.parse(text) : {}; } catch { data = { detail: text }; }
-    if (!res.ok) {
-      throw new Error(data.detail || data.message || `HTTP ${res.status}`);
-    }
+    if (!res.ok) throw new Error(data.detail || data.message || `HTTP ${res.status}`);
     return data;
   }
 
   function fmtSec(sec) {
     const s = Math.max(0, Math.round(Number(sec || 0)));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   }
 
   function fmtBytes(bytes) {
@@ -81,19 +75,38 @@
 
   function switchTab(tab) {
     state.tab = tab;
-    $$('.nav-pill').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === tab));
-    $$('.tab-view').forEach((s) => s.classList.toggle('is-active', s.id === `tab-${tab}`));
+    $$('.tb-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === tab));
+    $$('.view').forEach((v) => v.classList.toggle('is-active', v.id === `tab-${tab}`));
     if (tab === 'history') loadJobs();
     if (tab === 'upload') syncUploadPanel();
     if (tab === 'settings') loadSettingsBundle();
   }
 
-  // ------------------------------------------------------------------ studio preview & summary
+  function switchInsp(pane) {
+    $$('.insp-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.insp === pane));
+    $$('.insp-pane').forEach((p) => p.classList.toggle('is-active', p.id === `insp-${pane}`));
+  }
+
+  function switchBin(pane) {
+    $$('.bin-tab').forEach((b) => b.classList.toggle('is-active', b.dataset.bin === pane));
+    $$('.bin-pane').forEach((p) => p.classList.toggle('is-active', p.id === `bin-${pane}`));
+  }
+
+  function setStageView(view) {
+    const isPlayer = view === 'player';
+    $$('[data-stage-view]').forEach((b) => b.classList.toggle('is-active', b.dataset.stageView === view));
+    $('#preview-phone').hidden = isPlayer;
+    $('#stage-player-wrap').hidden = !isPlayer;
+    $('#clip-editor-strip').hidden = !isPlayer || !state.editingClip;
+    if (!isPlayer) $('#stage-video').pause();
+  }
+
+  // ------------------------------------------------------------------ stage preview
 
   const SAMPLE_SUBS = {
-    moments: 'ОН НЕ ЗНАЛ ЧТО ЭТО ЛОВУШКА',
-    parts: 'ЧАСТЬ 2 · САМЫЙ ПОВОРОТНЫЙ МОМЕНТ',
-    brainrot: 'И ТОГДА ИМПЕРАТОР ПРИКАЗАЛ МОЛЧАТЬ!',
+    moments: 'ОКАЗАЛОСЬ ЧТО ЭТО БЫЛА ЛОВУШКА',
+    parts: 'ЧАСТЬ 2 · ПОВОРОТНЫЙ МОМЕНТ',
+    brainrot: 'ОН СРАЗУ ПРЕДУПРЕДИЛ ВСЮ ДЕРЕВНЮ',
   };
 
   function updateStagePreview() {
@@ -103,15 +116,10 @@
     phone.dataset.effect = state.effect;
     phone.dataset.style = state.style;
 
-    const subsEnabled = $('#opt-subtitles').checked;
-    $('#preview-sub-box').hidden = !subsEnabled;
+    $('#preview-sub-box').hidden = !$('#opt-subtitles').checked;
     $('#preview-sub-text').textContent = SAMPLE_SUBS[state.mode] || SAMPLE_SUBS.moments;
 
-    const badgeMap = {
-      moments: 'МОМЕНТ #1',
-      parts: `ЧАСТЬ 1 · ${state.partSec}с`,
-      brainrot: 'ДОРАМА · TTS',
-    };
+    const badgeMap = { moments: 'МОМЕНТ #1', parts: `ЧАСТЬ 1 · ${state.partSec}с`, brainrot: 'ДОРАМА · TTS' };
     $('#preview-mode-badge').textContent = badgeMap[state.mode] || 'КЛИП';
 
     const fxObj = (state.looks.effects || []).find((e) => e.id === state.effect);
@@ -119,9 +127,7 @@
 
     const musicId = $('#opt-music').value;
     const musicObj = (state.looks.music || []).find((m) => m.id === musicId);
-    $('#preview-music-label').textContent = musicId && musicId !== 'none'
-      ? `♪ ${musicObj ? musicObj.title : musicId}`
-      : '♪ без музыки';
+    $('#preview-music-label').textContent = musicId && musicId !== 'none' ? `♪ ${musicObj ? musicObj.title : musicId}` : '♪ без музыки';
 
     const intId = $('#opt-integration').value;
     const intObj = state.integrations.find((x) => x.id === intId);
@@ -136,13 +142,13 @@
     const modeNames = { moments: 'Моменты', parts: `По частям (${state.partSec}с)`, brainrot: 'Озвучка дорамы' };
     const frameNames = { auto: 'Авто', blur: 'Размытие', crop: 'Кроп', black: 'Чёрный', original: 'Оригинал' };
     const styleNames = { classic: 'Классика', bold: 'Жирный', clean: 'Чистый', neon: 'Неон', drama: 'Дорама' };
-    $('#action-summary').textContent = `${modeNames[state.mode] || state.mode} · ${frameNames[state.framing] || state.framing} 9:16 · ${styleNames[state.style] || state.style}`;
+    $('#action-summary').textContent = `${modeNames[state.mode]} · ${frameNames[state.framing]} 9:16 · ${styleNames[state.style]}`;
     $('#run-btn-label').textContent = state.sourceMode === 'youtube' ? 'Скачать и собрать' : 'Собрать клипы';
   }
 
   function setMode(mode) {
     state.mode = mode;
-    $$('#mode-stack .mode-card').forEach((c) => c.classList.toggle('is-active', c.dataset.mode === mode));
+    $$('#mode-stack .mode-item').forEach((c) => c.classList.toggle('is-active', c.dataset.mode === mode));
     $('#opt-moments').hidden = mode !== 'moments';
     $('#opt-parts').hidden = mode !== 'parts';
     $('#opt-brainrot').hidden = mode !== 'brainrot';
@@ -151,19 +157,19 @@
 
   function setFraming(framing) {
     state.framing = framing;
-    $$('#framing-pills .mini-pill').forEach((b) => b.classList.toggle('is-active', b.dataset.framing === framing));
+    $$('#framing-pills .chip').forEach((b) => b.classList.toggle('is-active', b.dataset.framing === framing));
     updateStagePreview();
   }
 
   function setStyle(style) {
     state.style = style;
-    $$('#style-pills .mini-pill').forEach((b) => b.classList.toggle('is-active', b.dataset.style === style));
+    $$('#style-pills .chip').forEach((b) => b.classList.toggle('is-active', b.dataset.style === style));
     updateStagePreview();
   }
 
   function setEffect(effect) {
     state.effect = effect;
-    $$('#effect-pills .mini-pill').forEach((b) => b.classList.toggle('is-active', b.dataset.effect === effect));
+    $$('#effect-pills .chip').forEach((b) => b.classList.toggle('is-active', b.dataset.effect === effect));
     updateStagePreview();
   }
 
@@ -171,39 +177,11 @@
     state.partSec = Math.max(10, Math.min(180, Number(sec) || 45));
     $('#part-sec-label').textContent = `${state.partSec}с`;
     $('#part-sec-range').value = String(state.partSec);
-    $$('#part-presets .mini-pill').forEach((b) => b.classList.toggle('is-active', Number(b.dataset.sec) === state.partSec));
+    $$('#part-presets .chip').forEach((b) => b.classList.toggle('is-active', Number(b.dataset.sec) === state.partSec));
     updateStagePreview();
   }
 
-  function applyPreset(preset) {
-    if (preset === 'moments') {
-      setMode('moments');
-      setFraming('auto');
-      setStyle('classic');
-      setEffect('none');
-      $('#opt-music').value = 'none';
-    } else if (preset === 'parts') {
-      setMode('parts');
-      setPartSeconds(45);
-      setFraming('blur');
-      setStyle('bold');
-      setEffect('cinema');
-    } else if (preset === 'brainrot') {
-      setMode('brainrot');
-      setFraming('blur');
-      setStyle('drama');
-      setEffect('aura');
-      if ($$('#opt-music option').some((o) => o.value === 'drama-guzheng')) {
-        $('#opt-music').value = 'drama-guzheng';
-      }
-      $('#opt-music-vol').value = '20';
-      $('#music-vol-label').textContent = '20%';
-    }
-    updateStagePreview();
-    toast('Пресет применён', 'ok');
-  }
-
-  // ------------------------------------------------------------------ initial data loading
+  // ------------------------------------------------------------------ initial data
 
   async function loadHealth() {
     try {
@@ -211,14 +189,13 @@
       state.health = h;
       $('#brand-ver').textContent = `v${h.version || '1.1.0'}`;
       $('#tel-whisper').textContent = `Речь: ${h.whisper_size || 'base'}`;
-      $('#tel-whisper').className = `tel-chip ${(h.models || []).length ? 'is-ok' : ''}`;
+      $('#tel-whisper').className = `st-pill ${(h.models || []).length ? 'is-ok' : ''}`;
       $('#tel-encoder').textContent = `Рендер: ${(h.encoder || 'cpu').toUpperCase()}`;
-      $('#tel-encoder').className = `tel-chip ${h.encoder && h.encoder !== 'cpu' ? 'is-ok' : ''}`;
-      $('#tel-browser').textContent = h.browser ? 'Браузер: готов' : 'Браузер: нет';
-      $('#tel-browser').className = `tel-chip ${h.browser ? 'is-ok' : 'is-warn'}`;
-      $('#tel-browser').title = h.browser_error || 'Chrome / Edge готов';
+      $('#tel-encoder').className = `st-pill ${h.encoder && h.encoder !== 'cpu' ? 'is-ok' : ''}`;
+      $('#tel-browser').textContent = h.browser ? 'Браузер: ОК' : 'Браузер: нет';
+      $('#tel-browser').className = `st-pill ${h.browser ? 'is-ok' : 'is-warn'}`;
     } catch (e) {
-      toast(`Не удалось получить статус: ${e.message}`, 'err');
+      toast(e.message, 'err');
     }
   }
 
@@ -226,18 +203,17 @@
     const s = state.settings;
     if (!s) return;
     const llmCfg = s.llm || {};
-    const prov = llmCfg.provider || '—';
     const acc = state.accounts.find((a) => a.id === llmCfg.account_id);
     const chip = $('#tel-llm');
     if (acc) {
       chip.textContent = `ИИ: ${acc.label}`;
-      chip.className = 'tel-chip is-ok';
+      chip.className = 'st-pill is-ok';
     } else if (llmCfg.api_key_masked || llmCfg.api_key) {
-      chip.textContent = `ИИ: ${prov}`;
-      chip.className = 'tel-chip is-ok';
+      chip.textContent = `ИИ: ${llmCfg.provider || 'api'}`;
+      chip.className = 'st-pill is-ok';
     } else {
-      chip.textContent = 'ИИ: ключ / вход';
-      chip.className = 'tel-chip is-warn';
+      chip.textContent = 'ИИ: нужен вход';
+      chip.className = 'st-pill is-warn';
     }
   }
 
@@ -257,41 +233,29 @@
     state.accounts = accData.accounts || [];
     state.integrations = intData.integrations || [];
 
-    // Effects
     const fxWrap = $('#effect-pills');
     fxWrap.innerHTML = '';
     (looks.effects || []).forEach((fx) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'mini-pill';
-      btn.dataset.effect = fx.id;
-      btn.title = fx.hint || '';
-      btn.textContent = fx.label;
-      btn.addEventListener('click', () => setEffect(fx.id));
-      fxWrap.appendChild(btn);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.dataset.effect = fx.id;
+      b.title = fx.hint || '';
+      b.textContent = fx.label;
+      b.addEventListener('click', () => setEffect(fx.id));
+      fxWrap.appendChild(b);
     });
 
-    // Music
     const musSel = $('#opt-music');
     musSel.innerHTML = '<option value="none">Без музыки</option>';
-    (looks.music || []).forEach((m) => {
-      const opt = document.createElement('option');
-      opt.value = m.id;
-      opt.textContent = `${m.title}${m.mood ? ` — ${m.mood}` : ''}`;
-      musSel.appendChild(opt);
-    });
+    (looks.music || []).forEach((m) => musSel.appendChild(new Option(`${m.title}${m.mood ? ` — ${m.mood}` : ''}`, m.id)));
 
-    // Voices
     const voiceSel = $('#opt-voice');
     voiceSel.innerHTML = '';
-    (looks.voices || []).forEach((v) => {
-      const opt = document.createElement('option');
-      opt.value = v.id;
-      opt.textContent = v.label || v.id;
-      voiceSel.appendChild(opt);
-    });
+    (looks.voices || []).forEach((v) => voiceSel.appendChild(new Option(v.label || v.id, v.id)));
+    updateVoiceNote();
 
-    populateIntegrationSelects();
+    populateIntegrations();
     hydrateStudioFromSettings(settings);
     hydrateSettingsForm();
     renderAccounts();
@@ -299,54 +263,40 @@
     updateStagePreview();
   }
 
-  function populateIntegrationSelects() {
+  function updateVoiceNote() {
+    const v = (state.looks.voices || []).find((x) => x.id === $('#opt-voice').value);
+    if (v && v.note) $('#voice-note-hint').textContent = v.note;
+  }
+
+  function populateIntegrations() {
     const items = state.integrations || [];
-    const studioSel = $('#opt-integration');
-    const deckSel = $('#deck-int-select');
-    const savedList = $('#saved-int-list');
+    const sSel = $('#opt-integration');
+    const dSel = $('#deck-int-select');
+    const list = $('#saved-int-list');
+    const prev = sSel.value;
 
-    const prevStudio = studioSel.value;
-    studioSel.innerHTML = '<option value="">Без интеграции</option>';
-    deckSel.innerHTML = '<option value="">Выбрать рекламу…</option>';
-    savedList.innerHTML = '';
+    sSel.innerHTML = '<option value="">Без интеграции</option>';
+    dSel.innerHTML = '<option value="">Реклама…</option>';
+    list.innerHTML = items.length ? '' : '<div class="muted-xs">Нет сохранённых материалов</div>';
 
-    if (!items.length) {
-      savedList.innerHTML = '<div class="muted-xs">Пока нет сохранённых рекламных материалов.</div>';
-    }
-
-    items.forEach((item) => {
-      const label = `${item.name} (${item.mode === 'overlay' ? 'баннер' : 'врезка'})`;
-      const o1 = new Option(label, item.id);
-      const o2 = new Option(label, item.id);
-      studioSel.appendChild(o1);
-      deckSel.appendChild(o2);
+    items.forEach((it) => {
+      const lbl = `${it.name} (${it.mode === 'overlay' ? 'баннер' : 'врезка'})`;
+      sSel.appendChild(new Option(lbl, it.id));
+      dSel.appendChild(new Option(lbl, it.id));
 
       const row = document.createElement('div');
       row.className = 'model-row';
-      row.innerHTML = `
-        <div>
-          <strong>${esc(item.name)}</strong>
-          <div class="muted-xs">${esc(item.mode)} · ${esc(item.position)}</div>
-        </div>
-        <button class="btn-danger" type="button">Удалить</button>
-      `;
+      row.innerHTML = `<div><strong>${esc(it.name)}</strong><div class="muted-xs">${esc(it.mode)} · ${esc(it.position)}</div></div><button class="btn-danger" type="button">✕</button>`;
       row.querySelector('button').addEventListener('click', async () => {
-        try {
-          await api(`/api/integrations/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
-          state.integrations = (await api('/api/integrations')).integrations || [];
-          populateIntegrationSelects();
-          updateStagePreview();
-          toast('Интеграция удалена', 'ok');
-        } catch (e) {
-          toast(e.message, 'err');
-        }
+        await api(`/api/integrations/${encodeURIComponent(it.id)}`, { method: 'DELETE' });
+        state.integrations = (await api('/api/integrations')).integrations || [];
+        populateIntegrations();
+        updateStagePreview();
+        toast('Интеграция удалена', 'ok');
       });
-      savedList.appendChild(row);
+      list.appendChild(row);
     });
-
-    if (prevStudio && items.some((x) => x.id === prevStudio)) {
-      studioSel.value = prevStudio;
-    }
+    if (prev && items.some((x) => x.id === prev)) sSel.value = prev;
   }
 
   function hydrateStudioFromSettings(s) {
@@ -363,32 +313,25 @@
     $('#opt-subtitles').checked = r.subtitles !== false;
     $('#opt-protection').value = r.protection || 'off';
     if (r.music) $('#opt-music').value = r.music;
-    const mvol = Math.round(Number(r.music_volume ?? 0.18) * 100);
-    $('#opt-music-vol').value = String(mvol);
-    $('#music-vol-label').textContent = `${mvol}%`;
-    if (r.voice) $('#opt-voice').value = r.voice;
-    const ovol = Math.round(Number(r.orig_audio_vol ?? 0.08) * 100);
-    $('#opt-orig-vol').value = String(ovol);
-    $('#orig-vol-label').textContent = `${ovol}%`;
+    const mv = Math.round(Number(r.music_volume ?? 0.18) * 100);
+    $('#opt-music-vol').value = String(mv);
+    $('#music-vol-label').textContent = `${mv}%`;
+    if (r.voice && $$('#opt-voice option').some((o) => o.value === r.voice)) $('#opt-voice').value = r.voice;
+    updateVoiceNote();
+    const ov = Math.round(Number(r.orig_audio_vol ?? 0.08) * 100);
+    $('#opt-orig-vol').value = String(ov);
+    $('#orig-vol-label').textContent = `${ov}%`;
     $('#opt-brainrot-rewrite').checked = r.brainrot_rewrite !== false;
     if (r.integration_id) $('#opt-integration').value = r.integration_id;
   }
 
-  // ------------------------------------------------------------------ run studio job
+  // ------------------------------------------------------------------ run job
 
   function collectRenderPayload() {
     const isParts = state.mode === 'parts';
-    let minDur = Number($('#opt-min-dur').value || 18);
-    let maxDur = Number($('#opt-max-dur').value || 60);
-    let clips = Number($('#opt-clips').value || 5);
-    if (isParts) {
-      minDur = state.partSec;
-      maxDur = state.partSec;
-      clips = Number($('#parts-max-clips').value || 8);
-    }
     return {
       mode: state.mode,
-      clips,
+      clips: isParts ? Number($('#parts-max-clips').value || 8) : Number($('#opt-clips').value || 5),
       style: state.style,
       framing: state.framing,
       subtitles: $('#opt-subtitles').checked,
@@ -397,12 +340,12 @@
       protection: $('#opt-protection').value || 'off',
       music: $('#opt-music').value || 'none',
       music_volume: Number($('#opt-music-vol').value || 18) / 100,
-      voice: $('#opt-voice').value || 'dmitry_drama',
+      voice: $('#opt-voice').value || 'canon_bright',
       orig_audio_vol: Number($('#opt-orig-vol').value || 8) / 100,
       brainrot_rewrite: $('#opt-brainrot-rewrite').checked,
       integration_id: $('#opt-integration').value || '',
-      min_dur: minDur,
-      max_dur: maxDur,
+      min_dur: isParts ? state.partSec : Number($('#opt-min-dur').value || 18),
+      max_dur: isParts ? state.partSec : Number($('#opt-max-dur').value || 60),
     };
   }
 
@@ -429,6 +372,7 @@
       state.activeJobId = res.job_id;
       $('#cancel-job-btn').hidden = false;
       $('#open-folder-btn').hidden = true;
+      switchBin('logs');
       toast('Задача запущена', 'ok');
       await pollAll();
     } catch (e) {
@@ -437,40 +381,34 @@
     }
   }
 
-  // ------------------------------------------------------------------ job polling & pipeline stepper
-
   function stageIndexFromJob(job) {
     const st = `${job.step || ''} ${job.message || ''}`.toLowerCase();
     const pct = Number(job.progress || 0);
     if (job.status === 'done' || pct >= 100) return 4;
     if (st.includes('рендер') || st.includes('клип') || st.includes('субтитр') || pct >= 55) return 3;
     if (st.includes('подбор') || st.includes('сценари') || st.includes('озвуч') || st.includes('част') || pct >= 35) return 2;
-    if (st.includes('речь') || st.includes('распозна') || st.includes('whisper') || pct >= 18) return 1;
+    if (st.includes('речь') || st.includes('whisper') || pct >= 18) return 1;
     return 0;
   }
 
   function renderStudioJob(job) {
     if (!job) return;
     const pct = Math.max(0, Math.min(100, Math.round(Number(job.progress || 0))));
-    $('#job-pct-badge').textContent = job.status === 'error' ? 'Ошибка' : job.status === 'done' ? 'Готово' : `${pct}%`;
+    $('#job-pct-badge').textContent = `${pct}%`;
     $('#job-step-name').textContent = job.step || job.kind || 'Задача';
     $('#job-step-msg').textContent = job.message || job.error || 'Выполняется…';
     $('#job-progress-fill').style.width = `${pct}%`;
-
-    const elapsed = job.finished_at
-      ? (job.finished_at - job.created_at)
-      : (Date.now() / 1000 - (job.created_at || Date.now() / 1000));
+    const elapsed = job.finished_at ? (job.finished_at - job.created_at) : (Date.now() / 1000 - (job.created_at || Date.now() / 1000));
     $('#job-elapsed').textContent = fmtSec(elapsed);
 
     const activeIdx = stageIndexFromJob(job);
-    $$('#pipeline-stepper li').forEach((li, idx) => {
-      li.classList.toggle('is-done', job.status === 'done' ? true : idx < activeIdx);
-      li.classList.toggle('is-active', job.status === 'running' && idx === activeIdx);
+    $$('#pipeline-stepper span').forEach((sp, i) => {
+      sp.classList.toggle('is-done', job.status === 'done' ? true : i < activeIdx);
+      sp.classList.toggle('is-active', job.status === 'running' && i === activeIdx);
     });
 
     const term = $('#job-terminal');
-    const lines = job.logs || [];
-    term.textContent = lines.length ? lines.join('\n') : (job.error || job.message || '');
+    term.textContent = (job.logs || []).join('\n') || job.error || job.message || '';
     term.scrollTop = term.scrollHeight;
 
     const busy = job.status === 'running' || job.status === 'queued';
@@ -481,31 +419,24 @@
     if (job.status === 'done' && job.result && Array.isArray(job.result.clips)) {
       if (state.currentClipsJobId !== job.id || state.currentJobClips.length !== job.result.clips.length) {
         setClipDeck(job.id, job.result.clips, job.result.source || '');
+        switchBin('clips');
+        if (job.result.clips[0]) loadClipIntoStage(job.result.clips[0]);
       }
     }
   }
 
   function renderAuthJob(job) {
     const box = $('#auth-console');
-    if (!job) {
-      box.hidden = true;
-      return;
-    }
+    if (!job) { box.hidden = true; return; }
     box.hidden = false;
-    const pct = Math.max(5, Math.min(100, Math.round(Number(job.progress || 0))));
-    $('#auth-progress-fill').style.width = `${pct}%`;
-    $('#auth-console-title').textContent =
-      job.status === 'done' ? 'Аккаунт подключён' :
-      job.status === 'error' ? 'Ошибка входа' :
-      'Авторизация аккаунта…';
+    $('#auth-progress-fill').style.width = `${Math.max(5, Math.min(100, Math.round(Number(job.progress || 0))))}%`;
+    $('#auth-console-title').textContent = job.status === 'done' ? 'Аккаунт подключён' : job.status === 'error' ? 'Ошибка входа' : 'Авторизация…';
     $('#auth-console-msg').textContent = job.error || job.message || job.step || '';
     const logs = job.logs || [];
     const term = $('#auth-terminal');
     term.textContent = logs.join('\n') || (job.error || '');
     term.scrollTop = term.scrollHeight;
-
-    const busy = job.status === 'running' || job.status === 'queued';
-    $('#auth-cancel-btn').hidden = !busy;
+    $('#auth-cancel-btn').hidden = !(job.status === 'running' || job.status === 'queued');
 
     const urlMatch = logs.join('\n').match(/https:\/\/[^\s]+/);
     if (urlMatch) {
@@ -518,14 +449,14 @@
       $('#auth-url-copy').hidden = true;
     }
 
-    if (job.status === 'done' && !job._handledDone) {
-      job._handledDone = true;
+    if (job.status === 'done' && !job._doneNotified) {
+      job._doneNotified = true;
       loadSettingsBundle();
       loadHealth();
-      toast('Аккаунт успешно подключён', 'ok');
-    } else if (job.status === 'error' && !job._handledErr) {
-      job._handledErr = true;
-      toast(`Ошибка входа: ${job.error || 'смотри лог'}`, 'err');
+      toast('Аккаунт подключён', 'ok');
+    } else if (job.status === 'error' && !job._errNotified) {
+      job._errNotified = true;
+      toast(`Ошибка входа: ${job.error || 'см. лог'}`, 'err');
     }
   }
 
@@ -556,45 +487,34 @@
       }
 
       if (state.activeJobId) {
-        const detail = await api(`/api/jobs/${encodeURIComponent(state.activeJobId)}`);
-        renderStudioJob(detail);
+        renderStudioJob(await api(`/api/jobs/${encodeURIComponent(state.activeJobId)}`));
       } else {
-        const latestStudio = state.jobs.find((j) => j.kind === 'analyze' || j.kind === 'youtube');
-        if (latestStudio && !state.currentClipsJobId && latestStudio.status === 'done') {
-          const detail = await api(`/api/jobs/${encodeURIComponent(latestStudio.id)}`);
-          renderStudioJob(detail);
+        const latest = state.jobs.find((j) => (j.kind === 'analyze' || j.kind === 'youtube') && j.status === 'done');
+        if (latest && !state.currentClipsJobId) {
+          renderStudioJob(await api(`/api/jobs/${encodeURIComponent(latest.id)}`));
         }
       }
 
       if (state.activeAuthJobId) {
-        const authDetail = await api(`/api/jobs/${encodeURIComponent(state.activeAuthJobId)}`);
-        renderAuthJob(authDetail);
-        if (authDetail.status === 'done' || authDetail.status === 'error' || authDetail.status === 'cancelled') {
-          if (authDetail.status === 'done') {
-            await refreshAccountsOnly();
-          }
-        }
+        const ad = await api(`/api/jobs/${encodeURIComponent(state.activeAuthJobId)}`);
+        renderAuthJob(ad);
+        if (ad.status === 'done') await refreshAccountsOnly();
       }
 
       if (state.activeUploadJobId) {
-        const upDetail = await api(`/api/jobs/${encodeURIComponent(state.activeUploadJobId)}`);
-        renderUploadJob(upDetail);
+        renderUploadJob(await api(`/api/jobs/${encodeURIComponent(state.activeUploadJobId)}`));
       }
 
-      // Check active model download jobs
-      const dlRunning = state.jobs.some((j) => j.kind === 'download_model' && j.status === 'running');
-      if (dlRunning && state.tab === 'settings') {
+      if (state.tab === 'settings' && state.jobs.some((j) => j.kind === 'download_model' && j.status === 'running')) {
         await loadModels();
       }
-      if (state.tab === 'history') {
-        renderHistory();
-      }
+      if (state.tab === 'history') renderHistory();
     } catch {
-      // silent poll retry
+      // ignore transient poll error
     }
   }
 
-  // ------------------------------------------------------------------ clip deck & modals
+  // ------------------------------------------------------------------ clip bin & stage player
 
   function setClipDeck(jobId, clips, source = '') {
     state.currentClipsJobId = jobId;
@@ -606,6 +526,20 @@
     syncUploadPanel();
   }
 
+  function loadClipIntoStage(clip) {
+    state.editingClip = clip;
+    state.playingClipId = String(clip.id);
+    $('#stage-video').src = `${clip.video_url}?t=${Date.now()}`;
+    $('#ce-title').value = clip.title || '';
+    $('#ce-hook').value = clip.hook || '';
+    $('#ce-tags').value = clip.hashtags || '';
+    $('#ce-start').value = String(clip.start ?? 0);
+    $('#ce-end').value = String(clip.end ?? clip.duration ?? 30);
+    $('#stage-telemetry').textContent = `${clip.title || `Клип #${clip.id}`} · ${fmtSec(clip.duration)}`;
+    setStageView('player');
+    renderClipDeck();
+  }
+
   function renderClipDeck() {
     const grid = $('#clips-grid');
     $('#deck-selected-count').textContent = String(state.selectedClipIds.size);
@@ -613,7 +547,7 @@
     $('#nav-upload-count').hidden = state.selectedClipIds.size === 0;
 
     if (!state.currentJobClips.length) {
-      grid.innerHTML = '<div class="empty-state">Пока нет собранных клипов в текущей задаче.</div>';
+      grid.innerHTML = '<div class="empty-box">Запустите нарезку слева — клипы сразу загрузятся сюда.</div>';
       return;
     }
 
@@ -621,62 +555,41 @@
     state.currentJobClips.forEach((clip) => {
       const cid = String(clip.id);
       const checked = state.selectedClipIds.has(cid);
-      const card = document.createElement('article');
-      card.className = `clip-card ${checked ? 'is-selected' : ''}`;
+      const playing = state.playingClipId === cid;
+      const card = document.createElement('div');
+      card.className = `bin-card ${checked ? 'is-selected' : ''} ${playing ? 'is-playing' : ''}`;
       card.innerHTML = `
-        <div class="clip-thumb-wrap">
-          <img src="${esc(clip.preview_url)}?t=${Date.now()}" alt="${esc(clip.title || cid)}" loading="lazy">
-          <div class="clip-overlay-top">
-            <input class="clip-check" type="checkbox" ${checked ? 'checked' : ''}>
-            <span class="clip-tag">${esc(fmtSec(clip.duration))} · #${esc(clip.index ?? cid)}</span>
+        <div class="bin-thumb">
+          <img src="${esc(clip.preview_url)}?t=${Date.now()}" alt="">
+          <input class="bin-check" type="checkbox" ${checked ? 'checked' : ''}>
+        </div>
+        <div class="bin-meta">
+          <div class="bin-title">${esc(clip.title || `Клип #${cid}`)}</div>
+          <div class="bin-sub">${esc(clip.hook || '')}</div>
+          <div class="bin-foot">
+            <span class="mono muted-xs">${esc(fmtSec(clip.duration))}</span>
+            <button class="btn-ghost-xs bin-pub" type="button">Загрузить</button>
           </div>
-          <span class="clip-play-chip">▶ Смотреть</span>
-        </div>
-        <div class="clip-body">
-          <div class="clip-title">${esc(clip.title || `Клип #${cid}`)}</div>
-          <div class="clip-hook">${esc(clip.hook || '')}</div>
-          <div class="clip-tags">${esc(clip.hashtags || '')}</div>
-        </div>
-        <div class="clip-actions">
-          <button class="btn-soft btn-edit" type="button">Править / Тайминг</button>
-          <button class="btn-accent btn-pub" type="button">В публикацию</button>
         </div>
       `;
-
-      const cb = card.querySelector('.clip-check');
-      cb.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        if (cb.checked) state.selectedClipIds.add(cid);
+      card.querySelector('.bin-check').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (e.target.checked) state.selectedClipIds.add(cid);
         else state.selectedClipIds.delete(cid);
-        card.classList.toggle('is-selected', cb.checked);
+        card.classList.toggle('is-selected', e.target.checked);
         $('#deck-selected-count').textContent = String(state.selectedClipIds.size);
         $('#nav-upload-count').textContent = String(state.selectedClipIds.size);
         $('#nav-upload-count').hidden = state.selectedClipIds.size === 0;
       });
-
-      card.querySelector('.clip-thumb-wrap').addEventListener('click', () => openClipModal(clip));
-      card.querySelector('.btn-edit').addEventListener('click', () => openClipModal(clip));
-      card.querySelector('.btn-pub').addEventListener('click', () => {
+      card.querySelector('.bin-pub').addEventListener('click', (e) => {
+        e.stopPropagation();
         state.selectedClipIds = new Set([cid]);
         renderClipDeck();
         switchTab('upload');
       });
-
+      card.addEventListener('click', () => loadClipIntoStage(clip));
       grid.appendChild(card);
     });
-  }
-
-  function openClipModal(clip) {
-    state.editingClip = clip;
-    $('#cm-heading').textContent = `${clip.title || 'Клип'} (${fmtSec(clip.duration)})`;
-    const v = $('#cm-video');
-    v.src = `${clip.video_url}?t=${Date.now()}`;
-    $('#cm-title').value = clip.title || '';
-    $('#cm-hook').value = clip.hook || '';
-    $('#cm-tags').value = clip.hashtags || '';
-    $('#cm-start').value = String(clip.start ?? 0);
-    $('#cm-end').value = String(clip.end ?? clip.duration ?? 30);
-    $('#clip-modal').hidden = false;
   }
 
   async function saveClipMetadata() {
@@ -687,14 +600,14 @@
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: $('#cm-title').value.trim(),
-          hook: $('#cm-hook').value.trim(),
-          hashtags: $('#cm-tags').value.trim(),
+          title: $('#ce-title').value.trim(),
+          hook: $('#ce-hook').value.trim(),
+          hashtags: $('#ce-tags').value.trim(),
         }),
       });
       const fresh = await api(`/api/clips?job_id=${encodeURIComponent(state.currentClipsJobId)}`);
       setClipDeck(state.currentClipsJobId, fresh.clips || [], fresh.source || '');
-      toast('Метаданные клипа сохранены', 'ok');
+      toast('Сохранено', 'ok');
     } catch (e) {
       toast(e.message, 'err');
     }
@@ -704,29 +617,24 @@
     if (!state.editingClip || !state.currentClipsJobId) return;
     const cid = state.editingClip.id;
     try {
-      $('#cm-recut-btn').disabled = true;
+      $('#ce-recut-btn').disabled = true;
       const res = await api(`/api/clips/${encodeURIComponent(state.currentClipsJobId)}/${encodeURIComponent(cid)}/recut`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start: Number($('#cm-start').value),
-          end: Number($('#cm-end').value),
-        }),
+        body: JSON.stringify({ start: Number($('#ce-start').value), end: Number($('#ce-end').value) }),
       });
-      if (res.clip) {
-        $('#cm-video').src = `${res.clip.video_url}?t=${Date.now()}`;
-      }
+      if (res.clip) loadClipIntoStage(res.clip);
       const fresh = await api(`/api/clips?job_id=${encodeURIComponent(state.currentClipsJobId)}`);
       setClipDeck(state.currentClipsJobId, fresh.clips || [], fresh.source || '');
       toast('Клип перерезан', 'ok');
     } catch (e) {
       toast(e.message, 'err');
     } finally {
-      $('#cm-recut-btn').disabled = false;
+      $('#ce-recut-btn').disabled = false;
     }
   }
 
-  // ------------------------------------------------------------------ upload tab
+  // ------------------------------------------------------------------ upload & history
 
   async function syncUploadPanel() {
     const { jobs } = await api('/api/jobs?limit=30');
@@ -736,14 +644,13 @@
     sel.innerHTML = '';
     if (!doneJobs.length) {
       sel.innerHTML = '<option value="">Нет завершённых нарезок</option>';
-      $('#up-clip-list').innerHTML = '<div class="empty-state">Сначала соберите клипы в разделе «Студия».</div>';
+      $('#up-clip-list').innerHTML = '<div class="empty-box">Сначала соберите клипы в Студии.</div>';
       $('#up-sel-count').textContent = '0';
       return;
     }
     doneJobs.forEach((j) => {
-      const count = j.result && j.result.clips ? j.result.clips.length : '?';
-      const label = `${(j.meta && (j.meta.source || j.meta.url)) || j.id} (${count} кл.)`;
-      sel.appendChild(new Option(label, j.id));
+      const cnt = j.result && j.result.clips ? j.result.clips.length : '?';
+      sel.appendChild(new Option(`${(j.meta && (j.meta.source || j.meta.url)) || j.id} (${cnt} кл.)`, j.id));
     });
     if (curVal && doneJobs.some((j) => j.id === curVal)) sel.value = curVal;
     await loadUploadJobClips(sel.value);
@@ -754,21 +661,13 @@
     const data = await api(`/api/clips?job_id=${encodeURIComponent(jobId)}`);
     const clips = data.clips || [];
     const list = $('#up-clip-list');
-    list.innerHTML = '';
-    if (!clips.length) {
-      list.innerHTML = '<div class="empty-state">В этой задаче нет клипов</div>';
-      $('#up-sel-count').textContent = '0';
-      return;
-    }
+    list.innerHTML = clips.length ? '' : '<div class="empty-box">Нет клипов</div>';
     clips.forEach((c) => {
       const cid = String(c.id);
       const checked = state.currentClipsJobId === jobId ? state.selectedClipIds.has(cid) : true;
       const row = document.createElement('label');
-      row.className = 'check-row';
-      row.innerHTML = `
-        <input type="checkbox" value="${esc(cid)}" ${checked ? 'checked' : ''}>
-        <span><strong>${esc(c.title || `Клип #${cid}`)}</strong> <span class="muted-xs">(${esc(fmtSec(c.duration))})</span></span>
-      `;
+      row.className = 'check-tile';
+      row.innerHTML = `<input type="checkbox" value="${esc(cid)}" ${checked ? 'checked' : ''}><span><strong>${esc(c.title || `Клип #${cid}`)}</strong> <span class="muted-xs">(${esc(fmtSec(c.duration))})</span></span>`;
       row.querySelector('input').addEventListener('change', updateUploadCount);
       list.appendChild(row);
     });
@@ -776,71 +675,47 @@
   }
 
   function updateUploadCount() {
-    const count = $$('#up-clip-list input:checked').length;
-    $('#up-sel-count').textContent = String(count);
+    $('#up-sel-count').textContent = String($$('#up-clip-list input:checked').length);
   }
 
   async function refreshBrowserProfiles() {
     const engine = $('#up-engine').value;
     const row = $('#up-profile-row');
-    if (engine === 'plain') {
-      row.hidden = true;
-      return;
-    }
+    if (engine === 'plain') { row.hidden = true; return; }
     row.hidden = false;
     const sel = $('#up-profile-id');
     sel.innerHTML = '<option value="">Загрузка…</option>';
-    try {
-      const data = await api(`/api/browsers?engine=${encodeURIComponent(engine)}`);
-      sel.innerHTML = '';
-      if (!data.running) {
-        sel.innerHTML = `<option value="">${esc(data.error || 'Не запущен')}</option>`;
-        return;
-      }
-      (data.profiles || []).forEach((p) => {
-        sel.appendChild(new Option(`${p.name} (${p.status})`, p.id));
-      });
-    } catch (e) {
-      sel.innerHTML = `<option value="">${esc(e.message)}</option>`;
-    }
+    const data = await api(`/api/browsers?engine=${encodeURIComponent(engine)}`);
+    sel.innerHTML = '';
+    if (!data.running) { sel.innerHTML = `<option value="">${esc(data.error || 'Не запущен')}</option>`; return; }
+    (data.profiles || []).forEach((p) => sel.appendChild(new Option(`${p.name} (${p.status})`, p.id)));
   }
 
   async function runBatchUpload(dryRun) {
     const jobId = $('#up-job-select').value;
     const clipIds = $$('#up-clip-list input:checked').map((i) => i.value);
     const platforms = $$('#up-platforms input:checked').map((i) => i.value);
-    if (!jobId || !clipIds.length) return toast('Выберите задачу и хотя бы один клип', 'err');
-    if (!platforms.length) return toast('Выберите хотя бы одну платформу', 'err');
-
-    try {
-      const res = await api('/api/upload/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_id: jobId,
-          clip_ids: clipIds,
-          platforms,
-          dry_run: dryRun,
-          visibility: $('#up-visibility').value,
-          browser: {
-            engine: $('#up-engine').value,
-            profile_id: $('#up-profile-id').value || '',
-          },
-        }),
-      });
-      state.activeUploadJobId = res.job_id;
-      toast(dryRun ? 'Тестовый прогон запущен' : 'Публикация запущена', 'ok');
-      await pollAll();
-    } catch (e) {
-      toast(e.message, 'err');
-    }
+    if (!jobId || !clipIds.length) return toast('Выберите задачу и клипы', 'err');
+    if (!platforms.length) return toast('Выберите площадки', 'err');
+    const res = await api('/api/upload/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        job_id: jobId,
+        clip_ids: clipIds,
+        platforms,
+        dry_run: dryRun,
+        visibility: $('#up-visibility').value,
+        browser: { engine: $('#up-engine').value, profile_id: $('#up-profile-id').value || '' },
+      }),
+    });
+    state.activeUploadJobId = res.job_id;
+    toast(dryRun ? 'Тестовый прогон запущен' : 'Публикация запущена', 'ok');
+    await pollAll();
   }
 
-  // ------------------------------------------------------------------ history tab
-
   async function loadJobs() {
-    const { jobs } = await api('/api/jobs?limit=50');
-    state.jobs = jobs || [];
+    state.jobs = (await api('/api/jobs?limit=50')).jobs || [];
     renderHistory();
   }
 
@@ -853,44 +728,29 @@
       if (filt === 'login' && j.kind !== 'login') return false;
       if (filt === 'upload' && j.kind !== 'upload') return false;
       if (!q) return true;
-      const hay = `${j.id} ${j.kind} ${j.step} ${j.message} ${JSON.stringify(j.meta || {})}`.toLowerCase();
-      return hay.includes(q);
+      return `${j.id} ${j.kind} ${j.step} ${j.message} ${JSON.stringify(j.meta || {})}`.toLowerCase().includes(q);
     });
-
-    if (!items.length) {
-      wrap.innerHTML = '<div class="empty-state">Задачи по фильтру не найдены.</div>';
-      return;
-    }
-
-    wrap.innerHTML = '';
+    wrap.innerHTML = items.length ? '' : '<div class="empty-box">Нет задач по фильтру</div>';
     items.forEach((j) => {
       const row = document.createElement('div');
       row.className = 'hist-row';
-      const stCls = j.status === 'done' ? 'is-done' : j.status === 'error' ? 'is-err' : 'is-run';
-      const title = (j.meta && (j.meta.source || j.meta.url || j.meta.provider)) || j.kind;
-      const dt = new Date((j.created_at || 0) * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      const cls = j.status === 'done' ? 'is-done' : j.status === 'error' ? 'is-err' : '';
       row.innerHTML = `
-        <span class="kind-badge ${stCls}">${esc(j.kind)} · ${esc(j.status)}</span>
-        <div>
-          <strong>${esc(title)}</strong>
-          <div class="muted-xs">${esc(j.message || j.error || j.step || '')}</div>
-        </div>
-        <span class="mono muted-xs">${esc(dt)} · ${Math.round(Number(j.progress || 0))}%</span>
-        <div class="action-buttons"></div>
+        <div class="row-gap"><span class="kind-pill ${cls}">${esc(j.kind)} · ${esc(j.status)}</span><strong>${esc((j.meta && (j.meta.source || j.meta.url || j.meta.provider)) || j.kind)}</strong></div>
+        <div class="muted-xs">${esc(j.message || j.error || j.step || '')}</div>
+        <div class="row-gap"><span class="mono muted-xs">${Math.round(Number(j.progress || 0))}%</span></div>
       `;
-      const btns = row.querySelector('.action-buttons');
       if ((j.kind === 'analyze' || j.kind === 'youtube') && j.status === 'done') {
-        const loadBtn = document.createElement('button');
-        loadBtn.className = 'btn-soft';
-        loadBtn.type = 'button';
-        loadBtn.textContent = 'Открыть клипы';
-        loadBtn.addEventListener('click', async () => {
-          const d = await api(`/api/jobs/${encodeURIComponent(j.id)}`);
+        const b = document.createElement('button');
+        b.className = 'btn-ghost-xs';
+        b.type = 'button';
+        b.textContent = 'Открыть';
+        b.addEventListener('click', async () => {
           state.activeJobId = j.id;
-          renderStudioJob(d);
+          renderStudioJob(await api(`/api/jobs/${encodeURIComponent(j.id)}`));
           switchTab('studio');
         });
-        btns.appendChild(loadBtn);
+        row.lastElementChild.appendChild(b);
       }
       wrap.appendChild(row);
     });
@@ -913,63 +773,36 @@
   function renderAccounts() {
     const grid = $('#accounts-grid');
     const activeAccId = (state.settings && state.settings.llm && state.settings.llm.account_id) || '';
-    if (!state.accounts.length) {
-      grid.innerHTML = '<div class="empty-state">Аккаунты не подключены. Нажмите любую кнопку входа выше.</div>';
-      return;
-    }
-    grid.innerHTML = '';
+    grid.innerHTML = state.accounts.length ? '' : '<div class="empty-box">Аккаунты не подключены. Нажмите кнопку входа справа сверху.</div>';
     state.accounts.forEach((acc) => {
       const isAct = acc.id === activeAccId;
       const card = document.createElement('div');
       card.className = `acc-card ${isAct ? 'is-active' : ''}`;
       card.innerHTML = `
-        <div class="acc-top">
-          <div>
-            <div class="acc-title">${esc(acc.label || acc.email || acc.provider)}</div>
-            <div class="acc-meta">${esc(acc.provider)} · ${esc(acc.auth_method)}${acc.plan ? ` · ${esc(acc.plan)}` : ''}</div>
-          </div>
-          <span class="kind-badge ${isAct ? 'is-done' : ''}">${isAct ? 'Активен' : esc(acc.status || 'готов')}</span>
+        <div class="lbl-row">
+          <div><strong>${esc(acc.label || acc.email || acc.provider)}</strong><div class="muted-xs">${esc(acc.provider)} · ${esc(acc.auth_method)}</div></div>
+          <span class="kind-pill ${isAct ? 'is-done' : ''}">${isAct ? 'Активен' : esc(acc.status || 'готов')}</span>
         </div>
-        <div class="acc-actions">
-          <button class="btn-accent acc-use" type="button">${isAct ? 'Выбран' : 'Сделать активным'}</button>
-          <button class="btn-soft acc-test" type="button">Проверить</button>
-          <button class="btn-danger acc-del" type="button">Удалить</button>
+        <div class="row-gap">
+          <button class="btn-indigo-xs acc-use" type="button">${isAct ? 'Выбран' : 'Выбрать'}</button>
+          <button class="btn-ghost-xs acc-test" type="button">Тест</button>
+          <button class="btn-ghost-xs acc-del" type="button">Удалить</button>
         </div>
       `;
       card.querySelector('.acc-use').addEventListener('click', async () => {
-        try {
-          await api('/api/accounts/select', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ account_id: acc.id, activate_provider: true }),
-          });
-          await refreshAccountsOnly();
-          hydrateSettingsForm();
-          toast('Аккаунт активирован', 'ok');
-        } catch (e) {
-          toast(e.message, 'err');
-        }
+        await api('/api/accounts/select', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account_id: acc.id, activate_provider: true }) });
+        await refreshAccountsOnly();
+        hydrateSettingsForm();
+        toast('Аккаунт выбран', 'ok');
       });
       card.querySelector('.acc-test').addEventListener('click', async () => {
-        try {
-          const r = await api('/api/accounts/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ account_id: acc.id }),
-          });
-          toast(r.message || (r.ok ? 'Работает' : 'Не отвечает'), r.ok ? 'ok' : 'err');
-        } catch (e) {
-          toast(e.message, 'err');
-        }
+        const r = await api('/api/accounts/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account_id: acc.id }) });
+        toast(r.message || (r.ok ? 'Работает' : 'Ошибка'), r.ok ? 'ok' : 'err');
       });
       card.querySelector('.acc-del').addEventListener('click', async () => {
-        try {
-          await api(`/api/accounts/${encodeURIComponent(acc.id)}`, { method: 'DELETE' });
-          await refreshAccountsOnly();
-          toast('Аккаунт удалён', 'ok');
-        } catch (e) {
-          toast(e.message, 'err');
-        }
+        await api(`/api/accounts/${encodeURIComponent(acc.id)}`, { method: 'DELETE' });
+        await refreshAccountsOnly();
+        toast('Аккаунт удалён', 'ok');
       });
       grid.appendChild(card);
     });
@@ -983,7 +816,7 @@
         body: JSON.stringify({ provider, auth_method: authMethod }),
       });
       state.activeAuthJobId = res.job_id;
-      toast('Авторизация запущена…', 'ok');
+      toast('Окно авторизации запускается…', 'ok');
       await pollAll();
     } catch (e) {
       toast(e.message, 'err');
@@ -1001,42 +834,34 @@
 
     const provSel = $('#set-provider');
     provSel.innerHTML = '';
-    const allProvs = [...(state.accountProviders || []), ...(state.providers || [])];
-    allProvs.forEach((p) => {
-      provSel.appendChild(new Option(p.label || p.id, p.id));
-    });
+    [...(state.accountProviders || []), ...(state.providers || [])].forEach((p) => provSel.appendChild(new Option(p.label || p.id, p.id)));
     if (llm.provider) provSel.value = llm.provider;
     syncModelOptions();
     if (llm.model) $('#set-model').value = llm.model;
     $('#set-base-url').value = llm.base_url || '';
-    $('#set-fallback').checked = llm.auto_fallback !== false;
-    $('#set-outdir').value = paths.output_dir || '';
-    $('#set-lang').value = stt.language || 'auto';
+    $('#set-fallback').checked = llm.fallback !== false;
+    $('#set-outdir').value = paths.outdir || '';
+    $('#set-lang').value = stt.language || 'ru';
     $('#set-encoder').value = ren.encoder || 'auto';
     $('#set-proxy').value = net.proxy || '';
-    $('#set-yt-cookies').checked = net.yt_browser_cookies !== false;
+    $('#set-yt-cookies').value = net.youtube_cookies || 'auto';
   }
 
   function syncModelOptions() {
     const provId = $('#set-provider').value;
-    const allProvs = [...(state.accountProviders || []), ...(state.providers || [])];
-    const prov = allProvs.find((p) => p.id === provId);
+    const prov = [...(state.accountProviders || []), ...(state.providers || [])].find((p) => p.id === provId);
     const modSel = $('#set-model');
     modSel.innerHTML = '';
-    const models = (prov && prov.models) || [];
-    models.forEach((m) => {
+    ((prov && prov.models) || []).forEach((m) => {
       const id = typeof m === 'string' ? m : m.id;
-      const label = typeof m === 'string' ? m : (m.label || m.id);
-      modSel.appendChild(new Option(label, id));
+      modSel.appendChild(new Option(typeof m === 'string' ? m : (m.label || m.id), id));
     });
-    const isSub = provId === 'chatgpt_sub' || provId === 'google_sub';
-    $('#set-key-wrap').hidden = isSub;
+    $('#set-key-wrap').hidden = provId === 'chatgpt_sub' || provId === 'google_sub';
     $('#set-baseurl-wrap').hidden = provId !== 'ollama' && provId !== 'custom';
   }
 
   async function loadModels() {
     const data = await api('/api/models');
-    state.models = data;
     const wrap = $('#models-list');
     const sizes = Array.isArray(data.sizes) ? data.sizes : [];
     const installedList = Array.isArray(data.installed) ? data.installed : [];
@@ -1046,67 +871,40 @@
       const sz = info.id;
       const inst = installedList.find((x) => x.size === sz);
       const isInst = Boolean(inst && inst.complete);
-      const sizeStr = info.bytes ? fmtBytes(info.bytes) : (info.size || '');
       const row = document.createElement('div');
       row.className = 'model-row';
       row.innerHTML = `
-        <div>
-          <strong>${esc(info.label || sz)}</strong> <span class="muted-xs">${esc(sizeStr)}</span>
-          ${sz === curSize ? '<span class="kind-badge is-done">активна</span>' : ''}
-          <div class="muted-xs">${esc(info.note || '')}</div>
-        </div>
-        <div class="action-buttons"></div>
+        <div><strong>${esc(info.label || sz)}</strong> <span class="muted-xs">${esc(fmtBytes(info.bytes))}</span> ${sz === curSize ? '<span class="kind-pill is-done">активна</span>' : ''}<div class="muted-xs">${esc(info.note || '')}</div></div>
+        <div class="row-gap"></div>
       `;
-      const btns = row.querySelector('.action-buttons');
+      const btns = row.lastElementChild;
       if (isInst && sz !== curSize) {
-        const useBtn = document.createElement('button');
-        useBtn.type = 'button';
-        useBtn.className = 'btn-accent';
-        useBtn.textContent = 'Выбрать';
-        useBtn.addEventListener('click', async () => {
-          try {
-            state.settings = await api('/api/settings', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ stt: { whisper_size: sz } }),
-            });
-            await loadModels();
-            await loadHealth();
-            toast(`Модель ${sz} выбрана`, 'ok');
-          } catch (e) {
-            toast(e.message, 'err');
-          }
-        });
-        btns.appendChild(useBtn);
-      }
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = isInst ? 'btn-danger' : 'btn-soft';
-      btn.textContent = isInst ? 'Удалить' : 'Скачать';
-      btn.addEventListener('click', async () => {
-        try {
-          if (isInst) {
-            await api('/api/models/delete', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ size: sz }),
-            });
-            toast(`Модель ${sz} удалена`, 'ok');
-          } else {
-            await api('/api/models/download', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ size: sz }),
-            });
-            toast(`Скачивание ${sz} запущено`, 'ok');
-          }
+        const u = document.createElement('button');
+        u.className = 'btn-indigo-xs';
+        u.type = 'button';
+        u.textContent = 'Выбрать';
+        u.addEventListener('click', async () => {
+          state.settings = await api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stt: { whisper_size: sz } }) });
           await loadModels();
           await loadHealth();
-        } catch (e) {
-          toast(e.message, 'err');
-        }
+        });
+        btns.appendChild(u);
+      }
+      const b = document.createElement('button');
+      b.className = isInst ? 'btn-danger' : 'btn-ghost-xs';
+      b.type = 'button';
+      b.textContent = isInst ? 'Удалить' : 'Скачать';
+      b.addEventListener('click', async () => {
+        await api(isInst ? '/api/models/delete' : '/api/models/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ size: sz }),
+        });
+        toast(isInst ? `Удалена ${sz}` : `Скачивание ${sz} запущено`, 'ok');
+        await loadModels();
+        await loadHealth();
       });
-      btns.appendChild(btn);
+      btns.appendChild(b);
       wrap.appendChild(row);
     });
   }
@@ -1114,42 +912,47 @@
   async function saveAllSettings() {
     const prov = $('#set-provider').value;
     const keyVal = $('#set-api-key').value.trim();
+    const elKey = $('#set-eleven-key').value.trim();
     const patch = {
       llm: {
         provider: prov,
         model: $('#set-model').value,
         base_url: $('#set-base-url').value.trim(),
-        auto_fallback: $('#set-fallback').checked,
+        fallback: $('#set-fallback').checked,
       },
       stt: { language: $('#set-lang').value },
       render: { encoder: $('#set-encoder').value },
-      paths: { output_dir: $('#set-outdir').value.trim() },
-      network: {
-        proxy: $('#set-proxy').value.trim(),
-        yt_browser_cookies: $('#set-yt-cookies').checked,
-      },
+      paths: { outdir: $('#set-outdir').value.trim() },
+      network: { proxy: $('#set-proxy').value.trim(), youtube_cookies: $('#set-yt-cookies').value },
     };
-    if (keyVal) patch.llm[`${prov}_key`] = keyVal;
-
-    try {
-      state.settings = await api('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      $('#set-api-key').value = '';
-      updateLlmTelemetry();
-      await loadHealth();
-      toast('Настройки сохранены', 'ok');
-    } catch (e) {
-      toast(e.message, 'err');
+    if (keyVal) {
+      patch.llm.api_key = keyVal;
+      patch.llm.keys = { [prov]: keyVal };
     }
+    if (elKey) patch.tts = { elevenlabs_key: elKey };
+
+    state.settings = await api('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+    $('#set-api-key').value = '';
+    $('#set-eleven-key').value = '';
+    updateLlmTelemetry();
+    await loadHealth();
+    toast('Настройки сохранены', 'ok');
   }
 
-  // ------------------------------------------------------------------ events wiring
+  function playVoiceAudio(voiceId) {
+    const audio = $('#voice-sample-audio');
+    audio.src = `/api/voices/${encodeURIComponent(voiceId)}/sample?t=${Date.now()}`;
+    audio.play().catch((e) => toast(e.message, 'err'));
+  }
+
+  // ------------------------------------------------------------------ events
 
   function bindEvents() {
-    $$('.nav-pill').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    $$('.tb-tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    $$('[data-jump-settings]').forEach((b) => b.addEventListener('click', () => switchTab('settings')));
+    $$('.insp-tab').forEach((b) => b.addEventListener('click', () => switchInsp(b.dataset.insp)));
+    $$('.bin-tab').forEach((b) => b.addEventListener('click', () => switchBin(b.dataset.bin)));
+    $$('[data-stage-view]').forEach((b) => b.addEventListener('click', () => setStageView(b.dataset.stageView)));
 
     $$('[data-src-mode]').forEach((b) => {
       b.addEventListener('click', () => {
@@ -1163,55 +966,56 @@
 
     const dz = $('#dropzone');
     const fi = $('#file-input');
-    const applyFile = (file) => {
-      if (!file) return;
-      state.selectedFile = file;
+    const applyFile = (f) => {
+      if (!f) return;
+      state.selectedFile = f;
       dz.classList.add('has-file');
-      $('#drop-title').textContent = file.name;
-      $('#drop-sub').textContent = `${fmtBytes(file.size)} · готово к сборке`;
+      $('#drop-title').textContent = f.name;
+      $('#drop-sub').textContent = fmtBytes(f.size);
       $('#clear-file-btn').hidden = false;
     };
-    dz.addEventListener('click', (e) => {
-      if (e.target.id === 'clear-file-btn') return;
-      fi.click();
-    });
+    dz.addEventListener('click', (e) => { if (e.target.id !== 'clear-file-btn') fi.click(); });
     dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('is-drag'); });
     dz.addEventListener('dragleave', () => dz.classList.remove('is-drag'));
-    dz.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dz.classList.remove('is-drag');
-      if (e.dataTransfer.files[0]) applyFile(e.dataTransfer.files[0]);
-    });
+    dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('is-drag'); if (e.dataTransfer.files[0]) applyFile(e.dataTransfer.files[0]); });
     fi.addEventListener('change', () => applyFile(fi.files[0]));
     $('#clear-file-btn').addEventListener('click', () => {
       state.selectedFile = null;
       fi.value = '';
       dz.classList.remove('has-file');
-      $('#drop-title').textContent = 'Перетащите видео или нажмите';
-      $('#drop-sub').textContent = 'MP4, MOV, MKV, WebM · до 4K';
+      $('#drop-title').textContent = 'Выбрать или перетащить видео';
+      $('#drop-sub').textContent = 'MP4, MOV, MKV, WebM';
       $('#clear-file-btn').hidden = true;
     });
 
     $('#yt-paste-btn').addEventListener('click', async () => {
-      try {
-        $('#yt-url').value = await navigator.clipboard.readText();
-      } catch {
-        toast('Вставьте ссылку через Ctrl+V', 'info');
-      }
+      try { $('#yt-url').value = await navigator.clipboard.readText(); } catch { toast('Нажмите Ctrl+V', 'info'); }
     });
 
-    $$('[data-preset]').forEach((b) => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
-    $$('#mode-stack .mode-card').forEach((c) => c.addEventListener('click', () => setMode(c.dataset.mode)));
-    $$('#framing-pills .mini-pill').forEach((b) => b.addEventListener('click', () => setFraming(b.dataset.framing)));
-    $$('#style-pills .mini-pill').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
-    $$('#part-presets .mini-pill').forEach((b) => b.addEventListener('click', () => setPartSeconds(b.dataset.sec)));
+    $$('[data-preset="brainrot"]').forEach((b) => b.addEventListener('click', () => {
+      setMode('brainrot');
+      setFraming('blur');
+      setStyle('drama');
+      setEffect('aura');
+      if ($$('#opt-voice option').some((o) => o.value === 'canon_bright')) {
+        $('#opt-voice').value = 'canon_bright';
+        updateVoiceNote();
+      }
+      if ($$('#opt-music option').some((o) => o.value === 'drama-guzheng')) $('#opt-music').value = 'drama-guzheng';
+      updateStagePreview();
+      toast('Пресет китайской дорамы включён', 'ok');
+    }));
+
+    $$('#mode-stack .mode-item').forEach((c) => c.addEventListener('click', () => setMode(c.dataset.mode)));
+    $$('#framing-pills .chip').forEach((b) => b.addEventListener('click', () => setFraming(b.dataset.framing)));
+    $$('#style-pills .chip').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
+    $$('#part-presets .chip').forEach((b) => b.addEventListener('click', () => setPartSeconds(b.dataset.sec)));
     $('#part-sec-range').addEventListener('input', (e) => setPartSeconds(e.target.value));
 
     $('#opt-dur-preset').addEventListener('change', (e) => {
-      const val = e.target.value;
-      $('#custom-dur-row').hidden = val !== 'custom';
-      if (val !== 'custom') {
-        const [a, b] = val.split('-').map(Number);
+      $('#custom-dur-row').hidden = e.target.value !== 'custom';
+      if (e.target.value !== 'custom') {
+        const [a, b] = e.target.value.split('-').map(Number);
         $('#opt-min-dur').value = String(a);
         $('#opt-max-dur').value = String(b);
       }
@@ -1220,74 +1024,47 @@
     $('#opt-subtitles').addEventListener('change', updateStagePreview);
     $('#opt-music').addEventListener('change', updateStagePreview);
     $('#opt-integration').addEventListener('change', updateStagePreview);
-    $('#opt-music-vol').addEventListener('input', (e) => {
-      $('#music-vol-label').textContent = `${e.target.value}%`;
-    });
-    $('#opt-orig-vol').addEventListener('input', (e) => {
-      $('#orig-vol-label').textContent = `${e.target.value}%`;
-    });
+    $('#opt-voice').addEventListener('change', updateVoiceNote);
+    $('#opt-music-vol').addEventListener('input', (e) => { $('#music-vol-label').textContent = `${e.target.value}%`; });
+    $('#opt-orig-vol').addEventListener('input', (e) => { $('#orig-vol-label').textContent = `${e.target.value}%`; });
+
+    $('#preview-voice-btn').addEventListener('click', () => playVoiceAudio($('#opt-voice').value || 'canon_bright'));
+    $('#play-canon-1').addEventListener('click', () => playVoiceAudio('canon_bright'));
+    $('#play-canon-2').addEventListener('click', () => playVoiceAudio('canon_deep'));
 
     $('#run-btn').addEventListener('click', startStudioJob);
     $('#cancel-job-btn').addEventListener('click', async () => {
       if (state.activeJobId) await api(`/api/jobs/${encodeURIComponent(state.activeJobId)}/cancel`, { method: 'POST' });
     });
     $('#copy-log-btn').addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText($('#job-terminal').textContent);
-        toast('Лог скопирован', 'ok');
-      } catch {
-        toast('Не удалось скопировать', 'err');
-      }
+      await navigator.clipboard.writeText($('#job-terminal').textContent);
+      toast('Лог скопирован', 'ok');
     });
     $('#open-folder-btn').addEventListener('click', async () => {
       if (state.currentClipsJobId || state.activeJobId) {
-        await api('/api/open-folder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: state.currentClipsJobId || state.activeJobId }),
-        });
+        await api('/api/open-folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job_id: state.currentClipsJobId || state.activeJobId }) });
       }
     });
 
-    // Clip deck batch actions
-    $('#deck-select-all').addEventListener('click', () => {
-      state.selectedClipIds = new Set(state.currentJobClips.map((c) => String(c.id)));
-      renderClipDeck();
-    });
-    $('#deck-select-none').addEventListener('click', () => {
-      state.selectedClipIds.clear();
-      renderClipDeck();
-    });
+    $('#deck-select-all').addEventListener('click', () => { state.selectedClipIds = new Set(state.currentJobClips.map((c) => String(c.id))); renderClipDeck(); });
+    $('#deck-select-none').addEventListener('click', () => { state.selectedClipIds.clear(); renderClipDeck(); });
     $('#deck-to-upload-btn').addEventListener('click', () => switchTab('upload'));
     $('#deck-apply-int-btn').addEventListener('click', async () => {
       const intId = $('#deck-int-select').value;
-      const jobId = state.currentClipsJobId;
       const clipIds = Array.from(state.selectedClipIds);
-      if (!jobId || !intId || !clipIds.length) return toast('Выберите рекламу и клипы', 'err');
-      try {
-        const res = await api('/api/integrations/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: jobId, integration_id: intId, clip_ids: clipIds }),
-        });
-        state.activeJobId = res.job_id;
-        toast('Наложение интеграции запущено', 'ok');
-      } catch (e) {
-        toast(e.message, 'err');
-      }
+      if (!state.currentClipsJobId || !intId || !clipIds.length) return toast('Выберите рекламу и клипы', 'err');
+      const res = await api('/api/integrations/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: state.currentClipsJobId, integration_id: intId, clip_ids: clipIds }),
+      });
+      state.activeJobId = res.job_id;
+      toast('Вшивание рекламы запущено', 'ok');
     });
 
-    // Modals
-    $$('[data-close-modal]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.closeModal;
-        $(`#${id}`).hidden = true;
-        if (id === 'clip-modal') $('#cm-video').pause();
-      });
-    });
-    $('#cm-save-btn').addEventListener('click', saveClipMetadata);
-    $('#cm-recut-btn').addEventListener('click', recutClip);
-    $('#open-int-modal-btn').addEventListener('click', () => { $('#int-modal').hidden = false; });
+    $('#ce-save-btn').addEventListener('click', saveClipMetadata);
+    $('#ce-recut-btn').addEventListener('click', recutClip);
+
     $('#int-upload-btn').addEventListener('click', async () => {
       const file = $('#int-file').files[0];
       if (!file) return toast('Выберите файл рекламы', 'err');
@@ -1298,26 +1075,21 @@
       fd.append('position', $('#int-pos').value);
       fd.append('hook_sec', $('#int-hook-sec').value || '3');
       fd.append('scale_pct', $('#int-scale').value || '75');
-      try {
-        const res = await api('/api/integrations', { method: 'POST', body: fd });
-        state.integrations = (await api('/api/integrations')).integrations || [];
-        populateIntegrationSelects();
-        if (res.integration) $('#opt-integration').value = res.integration.id;
-        updateStagePreview();
-        $('#int-file').value = '';
-        $('#int-name').value = '';
-        toast('Интеграция сохранена', 'ok');
-      } catch (e) {
-        toast(e.message, 'err');
-      }
+      const res = await api('/api/integrations', { method: 'POST', body: fd });
+      state.integrations = (await api('/api/integrations')).integrations || [];
+      populateIntegrations();
+      if (res.integration) $('#opt-integration').value = res.integration.id;
+      updateStagePreview();
+      $('#int-file').value = '';
+      $('#int-name').value = '';
+      toast('Интеграция сохранена', 'ok');
     });
 
-    // Upload tab
     $('#up-job-select').addEventListener('change', (e) => loadUploadJobClips(e.target.value));
     $('#up-toggle-all').addEventListener('click', () => {
-      const boxes = $$('#up-clip-list input');
-      const allChecked = boxes.every((b) => b.checked);
-      boxes.forEach((b) => { b.checked = !allChecked; });
+      const bs = $$('#up-clip-list input');
+      const all = bs.every((b) => b.checked);
+      bs.forEach((b) => { b.checked = !all; });
       updateUploadCount();
     });
     $('#up-engine').addEventListener('change', refreshBrowserProfiles);
@@ -1325,12 +1097,10 @@
     $('#up-dry-btn').addEventListener('click', () => runBatchUpload(true));
     $('#up-publish-btn').addEventListener('click', () => runBatchUpload(false));
 
-    // History tab
     $('#hist-search').addEventListener('input', renderHistory);
     $('#hist-filter').addEventListener('change', renderHistory);
     $('#hist-refresh-btn').addEventListener('click', loadJobs);
 
-    // Settings & Accounts
     $('#login-chatgpt-oauth').addEventListener('click', () => startAccountLogin('chatgpt', 'oauth'));
     $('#login-chatgpt-browser').addEventListener('click', () => startAccountLogin('chatgpt', 'browser'));
     $('#login-google-browser').addEventListener('click', () => startAccountLogin('google', 'browser'));
@@ -1338,10 +1108,9 @@
       if (state.activeAuthJobId) await api(`/api/jobs/${encodeURIComponent(state.activeAuthJobId)}/cancel`, { method: 'POST' });
     });
     $('#auth-url-copy').addEventListener('click', async () => {
-      const url = $('#auth-url-copy').dataset.url;
-      if (url) {
-        await navigator.clipboard.writeText(url);
-        toast('Ссылка входа скопирована', 'ok');
+      if ($('#auth-url-copy').dataset.url) {
+        await navigator.clipboard.writeText($('#auth-url-copy').dataset.url);
+        toast('Ссылка скопирована', 'ok');
       }
     });
 
@@ -1349,24 +1118,19 @@
     $('#test-provider-btn').addEventListener('click', async () => {
       const st = $('#provider-test-status');
       st.textContent = 'Проверка…';
-      st.className = 'test-status';
-      try {
-        const res = await api('/api/providers/test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: $('#set-provider').value,
-            model: $('#set-model').value,
-            api_key: $('#set-api-key').value.trim(),
-            base_url: $('#set-base-url').value.trim(),
-          }),
-        });
-        st.textContent = res.message || (res.ok ? 'Работает' : 'Ошибка');
-        st.className = `test-status ${res.ok ? 'is-ok' : 'is-err'}`;
-      } catch (e) {
-        st.textContent = e.message;
-        st.className = 'test-status is-err';
-      }
+      st.className = 'test-msg';
+      const r = await api('/api/providers/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: $('#set-provider').value,
+          model: $('#set-model').value,
+          api_key: $('#set-api-key').value.trim(),
+          base_url: $('#set-base-url').value.trim(),
+        }),
+      });
+      st.textContent = r.message || (r.ok ? 'ОК' : 'Ошибка');
+      st.className = `test-msg ${r.ok ? 'is-ok' : 'is-err'}`;
     });
     $('#save-settings-btn').addEventListener('click', saveAllSettings);
   }

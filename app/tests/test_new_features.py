@@ -230,10 +230,30 @@ def test_web_ui_serves_redesigned_studio_html_and_assets():
     client = TestClient(fastapi_app)
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "CUTTER" in resp.text
+    assert "Cutter Workbench" in resp.text
     assert 'id="preview-phone"' in resp.text
+    assert 'id="stage-player-wrap"' in resp.text
     assert 'id="auth-console"' in resp.text
+    assert "no-store" in (resp.headers.get("cache-control") or "")
     assert client.get("/assets/app.css").status_code == 200
     assert client.get("/assets/app.js").status_code == 200
+    sample_resp = client.get("/api/voices/canon_bright/sample")
+    assert sample_resp.status_code == 200
+    assert len(sample_resp.content) > 10000
+
+
+def test_tts_merge_dub_segments_combines_short_phrases():
+    merged = tts.merge_dub_segments([
+        tts.DubSegment(0.0, 1.5, "Оказалось, незадолго до этого"),
+        tts.DubSegment(1.7, 3.8, "парень проверил прогноз погоды."),
+        tts.DubSegment(4.0, 6.2, "Он предупредил всю деревню."),
+    ])
+    assert len(merged) == 2
+    assert merged[0].start == pytest.approx(0.0)
+    assert merged[0].end == pytest.approx(3.8)
+    assert "прогноз погоды." in merged[0].text
+    assert tts.CANON_SAMPLE_1.is_file()
+    assert tts.CANON_SAMPLE_2.is_file()
+
 
 

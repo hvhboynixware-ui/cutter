@@ -73,6 +73,11 @@ DEFAULTS: dict[str, Any] = {
         "keys": {"openrouter": "", "gemini": "", "groq": ""},
     },
     "stt": {"whisper_size": "base", "language": "ru"},
+    "tts": {
+        "elevenlabs_key": "",
+        "eleven_voice_1": "",
+        "eleven_voice_2": "",
+    },
     "render": {
         "mode": "moments",          # moments | parts | brainrot
         "clips": 5,
@@ -86,7 +91,7 @@ DEFAULTS: dict[str, Any] = {
         "protection": "off",
         "music": "none",
         "music_volume": 0.18,
-        "voice": "dmitry_drama",
+        "voice": "canon_bright",
         "orig_audio_vol": 0.08,
         "brainrot_rewrite": True,
         "integration_id": "",
@@ -109,7 +114,7 @@ DEFAULTS: dict[str, Any] = {
     "paths": {"outdir": ""},
 }
 
-SECRET_PATHS = (("llm", "api_key"), ("upload", "antidetect_token"))
+SECRET_PATHS = (("llm", "api_key"), ("tts", "elevenlabs_key"), ("upload", "antidetect_token"))
 
 
 def _merge(base: dict, patch: dict) -> dict:

@@ -291,7 +291,7 @@ async def analyze(
     protection: str = Form(default="off"),
     music: str = Form(default="none"),
     music_volume: float = Form(default=0.18),
-    voice: str = Form(default="dmitry_drama"),
+    voice: str = Form(default="canon_bright"),
     orig_audio_vol: float = Form(default=0.08),
     brainrot_rewrite: bool = Form(default=True),
     integration_id: str = Form(default=""),
@@ -356,7 +356,7 @@ def youtube(body: dict = Body(...)) -> dict:
         "protection": body.get("protection", "off"),
         "music": body.get("music", "none"),
         "music_volume": float(body.get("music_volume", 0.18)),
-        "voice": str(body.get("voice", "dmitry_drama")),
+        "voice": str(body.get("voice", "canon_bright")),
         "orig_audio_vol": float(body.get("orig_audio_vol", 0.08)),
         "brainrot_rewrite": bool(body.get("brainrot_rewrite", True)),
         "integration_id": str(body.get("integration_id", "")),
@@ -858,9 +858,29 @@ def media(job_id: str, kind: str, name: str) -> FileResponse:
     return FileResponse(path, media_type=media_type)
 
 
+@app.get("/api/voices/{voice_id}/sample")
+def voice_sample(voice_id: str) -> FileResponse:
+    from .core import tts
+    vid = _safe_id(voice_id)
+    sample = tts.sample_file(vid)
+    if sample and sample.is_file():
+        return FileResponse(sample, media_type="audio/mpeg")
+    cache = S.DATA_DIR / "tts_preview" / f"{vid}.mp3"
+    if not cache.is_file():
+        tts.synthesize_line(
+            "Оказалось, незадолго до этого парень проверил прогноз и увидел, что придет сильнейший град.",
+            cache,
+            voice_id=vid,
+        )
+    return FileResponse(cache, media_type="audio/mpeg")
+
+
 @app.get("/")
 def index() -> HTMLResponse:
-    return HTMLResponse((WEB_DIR / "index.html").read_text(encoding="utf-8"))
+    return HTMLResponse(
+        (WEB_DIR / "index.html").read_text(encoding="utf-8"),
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 if WEB_DIR.is_dir():

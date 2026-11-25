@@ -915,7 +915,7 @@ def analyze(
     if mode == "brainrot" and music_id == "none":
         music_id = "drama-guzheng"
     music_volume = float(render_cfg.get("music_volume", 0.18))
-    voice_id = str(render_cfg.get("voice") or "dmitry_drama")
+    voice_id = str(render_cfg.get("voice") or "canon_bright")
     orig_audio_vol = float(render_cfg.get("orig_audio_vol", 0.08))
     integration_id = str(render_cfg.get("integration_id") or "").strip()
 
