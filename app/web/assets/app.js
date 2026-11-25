@@ -400,15 +400,21 @@
     }
   }
 
+  function jobElapsedSec(job) {
+    const startMs = Date.parse(job.started_at || job.created_at || '');
+    const endMs = job.finished_at ? Date.parse(job.finished_at) : Date.now();
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return 0;
+    return Math.max(0, (endMs - startMs) / 1000);
+  }
+
   function renderStudioJob(job) {
     if (!job) return;
     const pct = Math.max(0, Math.min(100, Math.round(Number(job.progress || 0))));
     $('#job-pct-badge').textContent = `${pct}%`;
-    $('#job-step-name').textContent = job.step || job.kind || 'Задача';
+    $('#job-step-name').textContent = job.stage || job.kind || 'Задача';
     $('#job-step-msg').textContent = job.error || job.message || 'Выполняется…';
     $('#job-progress-fill').style.width = `${pct}%`;
-    const elapsed = job.finished_at ? (job.finished_at - job.created_at) : (Date.now() / 1000 - (job.created_at || Date.now() / 1000));
-    $('#job-elapsed').textContent = fmtSec(elapsed);
+    $('#job-elapsed').textContent = fmtSec(jobElapsedSec(job));
 
     const term = $('#job-terminal');
     term.textContent = (job.logs || []).join('\n') || job.error || job.message || '';
@@ -434,7 +440,7 @@
     box.hidden = false;
     $('#auth-progress-fill').style.width = `${Math.max(5, Math.min(100, Math.round(Number(job.progress || 0))))}%`;
     $('#auth-console-title').textContent = job.status === 'done' ? 'Аккаунт подключён' : job.status === 'error' ? 'Ошибка входа' : 'Авторизация…';
-    $('#auth-console-msg').textContent = job.error || job.message || job.step || '';
+    $('#auth-console-msg').textContent = job.error || job.message || job.stage || '';
     const logs = job.logs || [];
     const term = $('#auth-terminal');
     term.textContent = logs.join('\n') || (job.error || '');
@@ -482,7 +488,7 @@
       const gpill = $('#global-job-pill');
       if (running) {
         gpill.hidden = false;
-        $('#global-job-text').textContent = running.step || running.kind;
+        $('#global-job-text').textContent = running.stage || running.kind;
         $('#global-job-pct').textContent = `${Math.round(Number(running.progress || 0))}%`;
         gpill.onclick = () => switchTab(running.kind === 'login' || running.kind === 'download_model' ? 'settings' : running.kind === 'upload' ? 'publish' : 'create');
       } else {
